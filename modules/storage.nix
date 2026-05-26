@@ -1,0 +1,16 @@
+{ server, ... }:
+
+{
+  systemd.tmpfiles.rules = [
+    "d /srv 0755 root root -"
+    "d /srv/nextcloud 0750 nextcloud nextcloud -"
+    "d /srv/immich 0750 immich immich -"
+    "d /srv/backups 0750 root root -"
+    "d /srv/backups/database-dumps 0750 root root -"
+  ];
+
+  networking.hosts."127.0.0.1" = [
+    server.cloudDomain
+    server.photosDomain
+  ];
+}

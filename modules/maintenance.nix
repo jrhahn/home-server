@@ -1,0 +1,46 @@
+{ config, pkgs, ... }:
+
+{
+  systemd.services.dump-family-service-databases = {
+    description = "Dump Nextcloud and Immich PostgreSQL databases";
+    startAt = "03:15";
+    serviceConfig = {
+      Type = "oneshot";
+      User = "root";
+      UMask = "0077";
+    };
+    script = ''
+      set -euo pipefail
+      out="/srv/backups/database-dumps/$(${pkgs.coreutils}/bin/date -u +%Y%m%dT%H%M%SZ)"
+      ${pkgs.coreutils}/bin/mkdir -p "$out"
+
+      ${pkgs.util-linux}/bin/runuser -u nextcloud -- \
+        ${config.services.postgresql.package}/bin/pg_dump nextcloud > "$out/nextcloud.sql"
+
+      ${pkgs.util-linux}/bin/runuser -u immich -- \
+        ${config.services.postgresql.package}/bin/pg_dump immich > "$out/immich.sql"
+
+      ${pkgs.findutils}/bin/find /srv/backups/database-dumps -mindepth 1 -maxdepth 1 -type d -mtime +14 -exec ${pkgs.coreutils}/bin/rm -rf {} +
+    '';
+  };
+
+  services.borgbackup.jobs.family-local = {
+    paths = [
+      "/srv/backups/database-dumps"
+      "/srv/immich"
+      "/srv/nextcloud"
+    ];
+    repo = "/srv/backups/borg-local";
+    startAt = "04:00";
+    compression = "zstd,6";
+    encryption.mode = "none";
+    prune.keep = {
+      daily = 7;
+      weekly = 4;
+      monthly = 6;
+    };
+    preHook = ''
+      ${pkgs.systemd}/bin/systemctl start dump-family-service-databases.service
+    '';
+  };
+}
