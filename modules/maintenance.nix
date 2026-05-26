@@ -43,4 +43,25 @@
       ${pkgs.systemd}/bin/systemctl start dump-family-service-databases.service
     '';
   };
+
+  services.borgbackup.jobs.home-assistant-local = {
+    paths = [
+      "/srv/home-assistant"
+    ];
+    repo = "/srv/backups/borg-local";
+    startAt = "03:45";
+    compression = "zstd,6";
+    encryption.mode = "none";
+    prune.keep = {
+      daily = 7;
+      weekly = 4;
+      monthly = 6;
+    };
+    preHook = ''
+      ${pkgs.systemd}/bin/systemctl stop home-assistant.service
+    '';
+    postHook = ''
+      ${pkgs.systemd}/bin/systemctl start home-assistant.service
+    '';
+  };
 }

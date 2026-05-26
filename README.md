@@ -5,6 +5,7 @@ NixOS configuration for a family server on an Intel J4105-class machine.
 This setup uses native NixOS services for:
 
 - Nextcloud
+- Home Assistant
 - Immich
 - PostgreSQL and Redis as managed dependencies
 - nginx reverse proxy
@@ -25,6 +26,7 @@ NixOS module.
 3. Edit [hosts/family-server/default.nix](hosts/family-server/default.nix) and set:
 
    - `cloudDomain`
+   - `homeAssistantDomain`
    - `photosDomain`
    - `enablePublicTls`
    - the SSH public key for `admin`
@@ -54,7 +56,55 @@ NixOS module.
 Default local hostnames:
 
 - Nextcloud: `http://cloud.home.arpa`
+- Home Assistant: `http://ha.home.arpa`
 - Immich: `http://photos.home.arpa`
+
+## Home Assistant Migration
+
+The safe parts of the Pi config are tracked in
+[home-assistant/config](home-assistant/config). The private state has been copied
+into `.ha-import/homeassistant/`, which is ignored by git because it contains
+Home Assistant storage, auth data, Zigbee state, and secrets.
+
+After installing NixOS on the new server, copy it into the service config dir:
+
+```bash
+./scripts/import-home-assistant-config.sh
+```
+
+The import intentionally excludes Home Assistant logs, caches, and
+`home-assistant_v2.db*`. Keep the Pi powered off or Home Assistant stopped
+during the final migration if you want to avoid changes happening on both
+systems at once.
+
+The NixOS Home Assistant module includes the built-in integrations listed in
+the Pi's `.storage/core.config_entries`: ZHA, Tuya, TP-Link, Denon/HEOS, mobile
+app, Met, Radio Browser, Shopping List, Bluetooth, and related defaults. The
+custom `localtuya` integration is copied as part of `custom_components/`.
+
+This is Home Assistant Core on NixOS, not Home Assistant OS. That means no
+Supervisor add-ons. Your Pi also had Mosquitto, Zigbee2MQTT, Node-RED, and
+Pi-hole directories; those configs are copied into `.ha-import/`, but they are
+not yet enabled as NixOS services.
+
+## Backups
+
+Local Borg backups are configured in [modules/maintenance.nix](modules/maintenance.nix).
+
+- `home-assistant-local`: stops Home Assistant briefly and backs up
+  `/srv/home-assistant` at 03:45.
+- `family-local`: dumps Nextcloud and Immich PostgreSQL databases, then backs
+  up the DB dumps plus `/srv/nextcloud` and `/srv/immich` at 04:00.
+
+Initialize the local repo once:
+
+```bash
+sudo borg init --encryption=none /srv/backups/borg-local
+```
+
+This protects against local app mistakes, but not disk loss. Add a second Borg
+or restic target to an external disk or offsite location before trusting the box
+with family photos.
 
 For public HTTPS, point real DNS names at the server, update the two domain
 values, set `enablePublicTls = true`, and replace the ACME email in

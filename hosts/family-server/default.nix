@@ -4,6 +4,7 @@ let
   server = {
     adminUser = "admin";
     cloudDomain = "cloud.home.arpa";
+    homeAssistantDomain = "ha.home.arpa";
     photosDomain = "photos.home.arpa";
     enablePublicTls = false;
   };
@@ -13,6 +14,7 @@ in
     ./hardware-configuration.nix
     ../../modules/base.nix
     ../../modules/docker.nix
+    ../../modules/home-assistant.nix
     ../../modules/immich.nix
     ../../modules/nextcloud.nix
     ../../modules/reverse-proxy.nix

@@ -1,0 +1,25 @@
+- id: '1754089041462'
+  alias: Sunrise
+  description: ''
+  triggers:
+  - trigger: sun
+    event: sunrise
+    offset: 0
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: 72a745ca45f486c589281a29a4af019c
+    entity_id: ad1f647e95e1f196702ef461f3ba5ce7
+    domain: light
+    brightness_pct: 30
+  - delay:
+      hours: 1
+      minutes: 0
+      seconds: 0
+      milliseconds: 0
+  - type: turn_on
+    device_id: 72a745ca45f486c589281a29a4af019c
+    entity_id: ad1f647e95e1f196702ef461f3ba5ce7
+    domain: light
+    brightness_pct: 100
+  mode: single
