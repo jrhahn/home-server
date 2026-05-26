@@ -2,6 +2,11 @@
 
 NixOS configuration for a family server on an Intel J4105-class machine.
 
+For hardware assumptions, workload boundaries, and future service decisions,
+start with [docs/server-context.md](docs/server-context.md).
+
+For a fresh machine setup, follow [INSTALLATION.md](INSTALLATION.md).
+
 This setup uses native NixOS services for:
 
 - Nextcloud
@@ -106,9 +111,9 @@ This protects against local app mistakes, but not disk loss. Add a second Borg
 or restic target to an external disk or offsite location before trusting the box
 with family photos.
 
-For public HTTPS, point real DNS names at the server, update the two domain
-values, set `enablePublicTls = true`, and replace the ACME email in
-[modules/base.nix](modules/base.nix).
+This server is intended for local network and Tailscale access only. Public
+HTTPS is disabled through `enablePublicTls = false`; do not expose it through
+the router.
 
 ## Notes
 

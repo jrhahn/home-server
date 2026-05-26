@@ -6,6 +6,7 @@ let
     cloudDomain = "cloud.home.arpa";
     homeAssistantDomain = "ha.home.arpa";
     photosDomain = "photos.home.arpa";
+    # Private-only deployment: local network and Tailscale, no public HTTPS.
     enablePublicTls = false;
   };
 in
