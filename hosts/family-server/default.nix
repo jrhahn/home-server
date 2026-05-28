@@ -33,6 +33,12 @@ in
   console.keyMap = "de";
   services.xserver.xkb.layout = "de";
 
+  zramSwap = {
+    enable = true;
+    memoryPercent = 100;
+    priority = 100;
+  };
+
   programs.zsh = {
     enable = true;
     enableCompletion = true;
