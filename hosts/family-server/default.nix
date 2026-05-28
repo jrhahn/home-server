@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 
 let
   server = {
@@ -27,9 +27,17 @@ in
 
   networking.hostName = "family-server";
   time.timeZone = "Europe/Berlin";
+  console.keyMap = "de";
+  services.xserver.xkb.layout = "de";
+
+  programs.zsh = {
+    enable = true;
+    ohMyZsh.enable = true;
+  };
 
   users.users.${server.adminUser} = {
     isNormalUser = true;
+    shell = pkgs.zsh;
     extraGroups = [
       "wheel"
       "docker"
