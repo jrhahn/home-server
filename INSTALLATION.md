@@ -174,12 +174,33 @@ If `.ha-import/homeassistant/` is present on this machine:
 sudo tailscale up
 ```
 
-## 12. Check Services
+## 12. Configure Tailscale DNS
+
+The server runs AdGuard Home as an internal DNS server on Tailscale. It resolves
+the local service names to the server's Tailscale IP:
+
+- `cloud.home.arpa`
+- `ha.home.arpa`
+- `photos.home.arpa`
+
+In the Tailscale admin console, add `100.64.0.1` as a restricted/split DNS
+nameserver for the `home.arpa` domain. Keep MagicDNS enabled.
+
+![Tailscale split DNS settings for home.arpa](docs/assets/tailscale-split-dns.svg)
+
+After this, phones and laptops connected to Tailscale can use:
+
+- Nextcloud: `http://cloud.home.arpa`
+- Home Assistant: `http://ha.home.arpa`
+- Immich: `http://photos.home.arpa`
+
+## 13. Check Services
 
 ```bash
 systemctl status home-assistant.service
 systemctl status nextcloud-setup.service
 systemctl status immich-server.service
+systemctl status adguardhome.service
 ```
 
 Default local URLs:

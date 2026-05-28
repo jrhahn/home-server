@@ -6,6 +6,8 @@ let
     cloudDomain = "cloud.home.arpa";
     homeAssistantDomain = "ha.home.arpa";
     photosDomain = "photos.home.arpa";
+    # Update this if Tailscale assigns a different address to the server.
+    tailscaleAddress = "100.64.0.1";
     # Private-only deployment: local network and Tailscale, no public HTTPS.
     enablePublicTls = false;
   };
@@ -13,6 +15,7 @@ in
 {
   imports = [
     ./hardware-configuration.nix
+    ../../modules/adguard-home.nix
     ../../modules/base.nix
     ../../modules/docker.nix
     ../../modules/home-assistant.nix
