@@ -99,7 +99,8 @@ Local Borg backups are configured in [modules/maintenance.nix](modules/maintenan
 - `home-assistant-local`: stops Home Assistant briefly and backs up
   `/srv/home-assistant` at 03:45.
 - `family-local`: dumps Nextcloud and Immich PostgreSQL databases, then backs
-  up the DB dumps plus `/srv/nextcloud` and `/srv/immich` at 04:00.
+  up the DB dumps, `/var/lib/secrets`, `/srv/nextcloud`, and `/srv/immich` at
+  04:00.
 
 Initialize the local repo once:
 

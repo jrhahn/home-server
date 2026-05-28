@@ -10,7 +10,7 @@
     "d /srv/backups/database-dumps 0750 root root -"
   ];
 
-  networking.hosts."127.0.0.1" = [
+  networking.hosts.${server.tailscaleAddress} = [
     server.cloudDomain
     server.homeAssistantDomain
     server.photosDomain

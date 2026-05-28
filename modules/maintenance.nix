@@ -26,6 +26,7 @@
 
   services.borgbackup.jobs.family-local = {
     paths = [
+      "/var/lib/secrets"
       "/srv/backups/database-dumps"
       "/srv/immich"
       "/srv/nextcloud"
