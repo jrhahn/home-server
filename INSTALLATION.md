@@ -116,7 +116,8 @@ sudo nixos-generate-config --show-hardware-config > hosts/family-server/hardware
 
 Edit `hosts/family-server/default.nix`:
 
-- add your SSH public key for `admin`
+- add your SSH public key for `admin`; SSH is enabled in `modules/base.nix`,
+  but password login is disabled in the final config
 - adjust `cloudDomain`, `homeAssistantDomain`, and `photosDomain`
 - keep `enablePublicTls = false`
 
@@ -135,7 +136,7 @@ sudo chmod 0400 /var/lib/secrets/nextcloud-admin-pass
 ## 7. Apply NixOS Config
 
 This applies the home-server config, including Git, German keyboard layout, zsh,
-and Oh My Zsh for the `admin` user.
+and a default Oh My Zsh setup for the `admin` user.
 
 ```bash
 sudo nixos-rebuild switch --flake .#family-server
@@ -147,7 +148,19 @@ sudo nixos-rebuild switch --flake .#family-server
 sudo borg init --encryption=none /srv/backups/borg-local
 ```
 
-## 9. Import Home Assistant
+## 9. Copy Home Assistant Import
+
+If you are migrating an existing Home Assistant config, copy `.ha-import` from
+the laptop to the server. Run this on the laptop from the directory containing
+`.ha-import`:
+
+```bash
+scp -r .ha-import admin@<server-ip>:~/home-server/
+```
+
+Skip this step for a fresh Home Assistant setup.
+
+## 10. Import Home Assistant
 
 If `.ha-import/homeassistant/` is present on this machine:
 
@@ -155,13 +168,13 @@ If `.ha-import/homeassistant/` is present on this machine:
 ./scripts/import-home-assistant-config.sh
 ```
 
-## 10. Start Tailscale
+## 11. Start Tailscale
 
 ```bash
 sudo tailscale up
 ```
 
-## 11. Check Services
+## 12. Check Services
 
 ```bash
 systemctl status home-assistant.service
