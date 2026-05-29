@@ -12,10 +12,6 @@
 
     environment = {
       IMMICH_LOG_LEVEL = "warn";
-      THUMB_LOCATION = "/srv/immich/thumbs";
-      ENCODED_VIDEO_LOCATION = "/srv/immich/encoded-video";
-      PROFILE_LOCATION = "/srv/immich/profile";
-      BACKUP_LOCATION = "/srv/immich/backups";
       TMPDIR = "/srv/immich/tmp";
     };
 

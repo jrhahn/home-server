@@ -65,6 +65,11 @@ Future HDD:
   /srv/immich-originals      original uploaded photos/videos
 ```
 
+Immich expects all storage-check folders below its media root, so generated
+folders inside `/srv/immich-originals` are symlinks back to `/srv/immich`.
+That keeps thumbnails, encoded video, profile images, backups, temp files, and
+ML cache on the SSD while originals can move to a future HDD.
+
 When adding the HDD later, stop Immich, copy `/srv/immich-originals` to the new
 drive, mount the drive at `/srv/immich-originals`, then start Immich again.
 
