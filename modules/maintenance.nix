@@ -10,6 +10,17 @@ let
   hetzner = server.backups.hetzner or { enable = false; };
   notify = server.backups.notify or { enable = false; };
   hetznerRepo = suffix: "ssh://${hetzner.user}@${hetzner.host}:23/./${hetzner.repoPrefix}/${suffix}";
+  familyPaths = [
+    "/var/lib/secrets"
+    "/srv/backups/database-dumps"
+    "/srv/forgejo"
+    "/srv/immich"
+    "/srv/immich-originals"
+    "/srv/seafile"
+    "/srv/seafile-mysql"
+    "/srv/seafile-redis"
+  ];
+  haPaths = [ "/srv/home-assistant" ];
   hetznerCommon = {
     compression = "zstd,6";
     encryption = {
@@ -65,16 +76,7 @@ lib.mkMerge [
 
   services.borgbackup.jobs = {
     family-local = {
-      paths = [
-        "/var/lib/secrets"
-        "/srv/backups/database-dumps"
-        "/srv/forgejo"
-        "/srv/immich"
-        "/srv/immich-originals"
-        "/srv/seafile"
-        "/srv/seafile-mysql"
-        "/srv/seafile-redis"
-      ];
+      paths = familyPaths;
       repo = "/srv/backups/borg-local";
       startAt = "04:00";
       compression = "zstd,6";
@@ -90,9 +92,7 @@ lib.mkMerge [
     };
 
     home-assistant-local = {
-      paths = [
-        "/srv/home-assistant"
-      ];
+      paths = haPaths;
       repo = "/srv/backups/borg-local";
       startAt = "03:45";
       compression = "zstd,6";
@@ -112,16 +112,7 @@ lib.mkMerge [
   }
   // lib.optionalAttrs hetzner.enable {
     family-hetzner = hetznerCommon // {
-      paths = [
-        "/var/lib/secrets"
-        "/srv/backups/database-dumps"
-        "/srv/forgejo"
-        "/srv/immich"
-        "/srv/immich-originals"
-        "/srv/seafile"
-        "/srv/seafile-mysql"
-        "/srv/seafile-redis"
-      ];
+      paths = familyPaths;
       repo = hetznerRepo "family";
       startAt = "04:30";
       preHook = ''
@@ -130,9 +121,7 @@ lib.mkMerge [
     };
 
     home-assistant-hetzner = hetznerCommon // {
-      paths = [
-        "/srv/home-assistant"
-      ];
+      paths = haPaths;
       repo = hetznerRepo "home-assistant";
       startAt = "04:15";
       preHook = ''
@@ -175,26 +164,59 @@ lib.mkMerge [
         script = ''
           job="$1"
           unit="borgbackup-job-$job.service"
+          host='${config.networking.hostName}'
           result="$(${pkgs.systemd}/bin/systemctl show "$unit" -p Result --value)"
+          when="$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S %Z')"
+
+          case "$job" in
+            family-hetzner)
+              repo='${hetznerRepo "family"}'
+              sources='${lib.concatStringsSep "\n  " familyPaths}'
+              ;;
+            home-assistant-hetzner)
+              repo='${hetznerRepo "home-assistant"}'
+              sources='${lib.concatStringsSep "\n  " haPaths}'
+              ;;
+            *)
+              repo=""
+              sources="(unknown job)"
+              ;;
+          esac
+
           if [ "$result" = "success" ]; then
-            subject="[backup OK] $job @ ${config.networking.hostName}"
+            subject="[backup OK] $job @ $host"
           else
-            subject="[BACKUP FAILED] $job ($result) @ ${config.networking.hostName}"
+            subject="[BACKUP FAILED] $job ($result) @ $host"
           fi
-          stats="$(${pkgs.systemd}/bin/journalctl -u "$unit" -n 400 --no-pager 2>/dev/null \
-            | ${pkgs.gnugrep}/bin/grep -aiE 'Archive name|Time \(end\)|Duration|Number of files|Original size|Compressed size|Deduplicated size|This archive|All archives' \
-            | ${pkgs.coreutils}/bin/tail -n 20 || true)"
-          if [ -z "$stats" ]; then
-            stats="$(${pkgs.systemd}/bin/journalctl -u "$unit" -n 60 --no-pager 2>/dev/null \
-              | ${pkgs.gnugrep}/bin/grep -avE 'post-quantum|decrypt later|openssh.com/pq|may need to be upgraded|vulnerable' \
-              | ${pkgs.coreutils}/bin/tail -n 25 || true)"
+
+          # Pull a clean summary straight from the repo: last archive details
+          # plus repository totals (deduplicated size across all archives).
+          export BORG_RSH='${pkgs.openssh}/bin/ssh -i ${hetzner.sshKeyFile} -o StrictHostKeyChecking=accept-new'
+          export BORG_PASSCOMMAND='${pkgs.coreutils}/bin/cat ${hetzner.passphraseFile}'
+          info="$(${pkgs.borgbackup}/bin/borg info --remote-path=borg-1.4 --last 1 "$repo" 2>&1 \
+            | ${pkgs.gnugrep}/bin/grep -avE 'post-quantum|decrypt later|openssh.com/pq|may need to be upgraded|vulnerable' || true)"
+
+          errlines=""
+          if [ "$result" != "success" ]; then
+            errlines="$(${pkgs.systemd}/bin/journalctl -o cat -u "$unit" -n 80 2>/dev/null \
+              | ${pkgs.gnugrep}/bin/grep -aiE 'error|fail|denied|exception|cannot|could not|permission' \
+              | ${pkgs.coreutils}/bin/tail -n 15 || true)"
           fi
+
           {
             printf 'From: %s\n' '${notify.from}'
             printf 'To: %s\n' '${notify.to}'
             printf 'Subject: %s\n\n' "$subject"
-            printf 'Job:    %s\nResult: %s\nHost:   %s\n\n' "$job" "$result" '${config.networking.hostName}'
-            printf '%s\n' "$stats"
+            printf 'Job:     %s\n' "$job"
+            printf 'Result:  %s\n' "$result"
+            printf 'Host:    %s\n' "$host"
+            printf 'When:    %s\n' "$when"
+            printf 'Repo:    %s\n\n' "$repo"
+            printf 'Sources:\n  %s\n\n' "$sources"
+            if [ -n "$errlines" ]; then
+              printf 'Errors (from journal):\n%s\n\n' "$errlines"
+            fi
+            printf 'Latest archive + repository totals:\n%s\n' "$info"
           } | ${pkgs.msmtp}/bin/msmtp -C /etc/msmtprc -a default '${notify.to}'
         '';
       };
