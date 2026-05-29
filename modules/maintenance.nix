@@ -2,7 +2,7 @@
 
 {
   systemd.services.dump-family-service-databases = {
-    description = "Dump Nextcloud and Immich PostgreSQL databases";
+    description = "Dump Seafile and Immich databases";
     startAt = "03:15";
     serviceConfig = {
       Type = "oneshot";
@@ -14,8 +14,17 @@
       out="/srv/backups/database-dumps/$(${pkgs.coreutils}/bin/date -u +%Y%m%dT%H%M%SZ)"
       ${pkgs.coreutils}/bin/mkdir -p "$out"
 
-      ${pkgs.util-linux}/bin/runuser -u nextcloud -- \
-        ${config.services.postgresql.package}/bin/pg_dump nextcloud > "$out/nextcloud.sql"
+      if ${pkgs.docker}/bin/docker ps --format '{{.Names}}' | ${pkgs.gnugrep}/bin/grep -qx seafile-mysql; then
+        set -a
+        . /var/lib/secrets/seafile.env
+        set +a
+        ${pkgs.docker}/bin/docker exec seafile-mysql mariadb-dump \
+          --single-transaction \
+          --quick \
+          --user=root \
+          --password="$MARIADB_ROOT_PASSWORD" \
+          --databases ccnet_db seafile_db seahub_db > "$out/seafile.sql"
+      fi
 
       ${pkgs.util-linux}/bin/runuser -u immich -- \
         ${config.services.postgresql.package}/bin/pg_dump immich > "$out/immich.sql"
@@ -29,7 +38,10 @@
       "/var/lib/secrets"
       "/srv/backups/database-dumps"
       "/srv/immich"
-      "/srv/nextcloud"
+      "/srv/immich-originals"
+      "/srv/seafile"
+      "/srv/seafile-mysql"
+      "/srv/seafile-redis"
     ];
     repo = "/srv/backups/borg-local";
     startAt = "04:00";

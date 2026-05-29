@@ -1,5 +1,5 @@
 {
-  description = "NixOS home server for Nextcloud, Immich, and family services";
+  description = "NixOS home server for Seafile, Immich, and family services";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";

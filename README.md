@@ -7,17 +7,17 @@ start with [docs/server-context.md](docs/server-context.md).
 
 For a fresh machine setup, follow [INSTALLATION.md](INSTALLATION.md).
 
-This setup uses native NixOS services for:
+This setup uses NixOS services and a small Docker-based Seafile stack for:
 
-- Nextcloud
+- Seafile
 - Home Assistant
 - Immich
-- PostgreSQL and Redis as managed dependencies
+- PostgreSQL, MariaDB, and Redis dependencies
 - nginx reverse proxy
 - database dumps and local Borg backups
 
-Docker is enabled only as an escape hatch for future services without a good
-NixOS module.
+Docker is enabled for Seafile because NixOS 25.11 removed the old native
+`services.seafile` module, and for future services without a good NixOS module.
 
 ## First Install
 
@@ -36,12 +36,10 @@ NixOS module.
    - `enablePublicTls`
    - the SSH public key for `admin`
 
-4. Create the Nextcloud admin password:
+4. Create Seafile secrets:
 
    ```bash
-   sudo install -d -m 0750 -o root -g root /var/lib/secrets
-   sudo sh -c 'openssl rand -base64 32 > /var/lib/secrets/nextcloud-admin-pass'
-   sudo chmod 0400 /var/lib/secrets/nextcloud-admin-pass
+   ./scripts/create-seafile-secrets.sh
    ```
 
 5. Build and switch:
@@ -60,9 +58,14 @@ NixOS module.
 
 Default local hostnames:
 
-- Nextcloud: `http://cloud.home.arpa`
+- Seafile: `http://cloud.home.arpa`
 - Home Assistant: `http://ha.home.arpa`
 - Immich: `http://photos.home.arpa`
+
+Getting started:
+
+- [Seafile guide](docs/seafile-getting-started.md)
+- [Immich guide](docs/immich-getting-started.md)
 
 ## Home Assistant Migration
 
@@ -98,9 +101,10 @@ Local Borg backups are configured in [modules/maintenance.nix](modules/maintenan
 
 - `home-assistant-local`: stops Home Assistant briefly and backs up
   `/srv/home-assistant` at 03:45.
-- `family-local`: dumps Nextcloud and Immich PostgreSQL databases, then backs
-  up the DB dumps, `/var/lib/secrets`, `/srv/nextcloud`, and `/srv/immich` at
-  04:00.
+- `family-local`: dumps the Seafile MariaDB databases and Immich PostgreSQL
+  database, then backs up the DB dumps, `/var/lib/secrets`, `/srv/seafile`,
+  `/srv/seafile-mysql`,
+  `/srv/seafile-redis`, `/srv/immich`, and `/srv/immich-originals` at 04:00.
 
 Initialize the local repo once:
 
@@ -119,5 +123,5 @@ the router.
 ## Notes
 
 NixOS rollback protects the host configuration. It does not automatically roll
-back Nextcloud or Immich database migrations. Always take a database dump and a
+back Seafile or Immich database migrations. Always take a database dump and a
 data backup before major upgrades.

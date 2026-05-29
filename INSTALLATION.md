@@ -92,7 +92,7 @@ My Zsh. Before the repo config is applied, use a temporary shell with Git for
 the first clone:
 
 ```bash
-nix-shell -p git
+nix-shell -p git openssl
 ```
 
 ## 3. Clone This Repo
@@ -128,9 +128,7 @@ again.
 ## 6. Create Secrets
 
 ```bash
-sudo install -d -m 0750 -o root -g root /var/lib/secrets
-sudo sh -c 'openssl rand -base64 32 > /var/lib/secrets/nextcloud-admin-pass'
-sudo chmod 0400 /var/lib/secrets/nextcloud-admin-pass
+./scripts/create-seafile-secrets.sh
 ```
 
 ## 7. Apply NixOS Config
@@ -190,7 +188,7 @@ nameserver for the `home.arpa` domain. Keep MagicDNS enabled.
 
 After this, phones and laptops connected to Tailscale can use:
 
-- Nextcloud: `http://cloud.home.arpa`
+- Seafile: `http://cloud.home.arpa`
 - Home Assistant: `http://ha.home.arpa`
 - Immich: `http://photos.home.arpa`
 
@@ -198,7 +196,7 @@ After this, phones and laptops connected to Tailscale can use:
 
 ```bash
 systemctl status home-assistant.service
-systemctl status nextcloud-setup.service
+systemctl status docker-seafile.service
 systemctl status immich-server.service
 systemctl status adguardhome.service
 ```
@@ -206,5 +204,10 @@ systemctl status adguardhome.service
 Default local URLs:
 
 - Home Assistant: `http://ha.home.arpa`
-- Nextcloud: `http://cloud.home.arpa`
+- Seafile: `http://cloud.home.arpa`
 - Immich: `http://photos.home.arpa`
+
+Service guides:
+
+- [Seafile getting started](docs/seafile-getting-started.md)
+- [Immich getting started](docs/immich-getting-started.md)

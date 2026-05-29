@@ -6,7 +6,7 @@ Use small, observable upgrades for stateful services.
 
    ```bash
    sudo systemctl start dump-family-service-databases.service
-   sudo borg create --stats /srv/backups/borg-local::manual-$(date -u +%Y%m%dT%H%M%SZ) /srv/nextcloud /srv/immich /srv/backups/database-dumps
+   sudo borg create --stats /srv/backups/borg-local::manual-$(date -u +%Y%m%dT%H%M%SZ) /srv/seafile /srv/seafile-mysql /srv/seafile-redis /srv/immich /srv/immich-originals /srv/backups/database-dumps /var/lib/secrets
    ```
 
 2. Update the flake lock:
@@ -30,8 +30,8 @@ Use small, observable upgrades for stateful services.
 5. Check services:
 
    ```bash
-   systemctl status nextcloud-setup.service nextcloud-cron.service immich-server.service
-   journalctl -u nextcloud-setup.service -u immich-server.service --since '30 min ago'
+   systemctl status docker-seafile.service docker-seafile-mysql.service immich-server.service
+   journalctl -u docker-seafile.service -u immich-server.service --since '30 min ago'
    ```
 
 6. If the host config is bad, roll back:

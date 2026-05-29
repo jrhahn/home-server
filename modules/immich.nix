@@ -1,17 +1,27 @@
-{ config, server, ... }:
+{ config, lib, server, ... }:
 
 {
   services.immich = {
     enable = true;
     host = "127.0.0.1";
     port = 2283;
-    mediaLocation = "/srv/immich";
+    mediaLocation = "/srv/immich-originals";
     openFirewall = false;
 
     machine-learning.enable = true;
 
     environment = {
       IMMICH_LOG_LEVEL = "warn";
+      THUMB_LOCATION = "/srv/immich/thumbs";
+      ENCODED_VIDEO_LOCATION = "/srv/immich/encoded-video";
+      PROFILE_LOCATION = "/srv/immich/profile";
+      BACKUP_LOCATION = "/srv/immich/backups";
+      TMPDIR = "/srv/immich/tmp";
+    };
+
+    machine-learning.environment = {
+      MACHINE_LEARNING_CACHE_FOLDER = lib.mkForce "/srv/immich/ml-cache";
+      XDG_CACHE_HOME = lib.mkForce "/srv/immich/ml-cache";
     };
   };
 

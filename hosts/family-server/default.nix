@@ -20,8 +20,8 @@ in
     ../../modules/docker.nix
     ../../modules/home-assistant.nix
     ../../modules/immich.nix
-    ../../modules/nextcloud.nix
     ../../modules/reverse-proxy.nix
+    ../../modules/seafile.nix
     ../../modules/storage.nix
     ../../modules/maintenance.nix
   ];

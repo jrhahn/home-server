@@ -17,13 +17,13 @@ heavy workloads that assume a modern desktop CPU or lots of RAM.
 ## Primary Workloads
 
 - Home Assistant Core on NixOS
-- Nextcloud for family files, contacts, calendars, and sharing
+- Seafile for family file sync and sharing
 - Immich for family photo/video backup and browsing
 - nginx reverse proxy
 - Tailscale for private remote access
-- PostgreSQL/Redis where required by managed NixOS services
+- PostgreSQL, MariaDB, and Redis where required by services
 - Borg backups
-- Docker only as an escape hatch for services without a good NixOS module
+- Docker for Seafile and as an escape hatch for services without a good NixOS module
 
 ## Design Principles
 
@@ -31,7 +31,7 @@ heavy workloads that assume a modern desktop CPU or lots of RAM.
 - Keep state under `/srv`.
 - Keep secrets and live application state out of git unless encrypted first.
 - Treat NixOS rollback as host rollback, not application database rollback.
-- Take app/data backups before major Nextcloud, Immich, or Home Assistant
+- Take app/data backups before major Seafile, Immich, or Home Assistant
   upgrades.
 - Prefer services that can run comfortably on 8 GB RAM.
 - Avoid running duplicate stacks for the same purpose.
@@ -39,15 +39,18 @@ heavy workloads that assume a modern desktop CPU or lots of RAM.
 ## Current Service Paths
 
 - Home Assistant: `/srv/home-assistant`
-- Nextcloud: `/srv/nextcloud`
-- Immich: `/srv/immich`
+- Seafile: `/srv/seafile`
+- Seafile MariaDB: `/srv/seafile-mysql`
+- Seafile Redis: `/srv/seafile-redis`
+- Immich generated data/cache: `/srv/immich`
+- Immich originals, future HDD mount: `/srv/immich-originals`
 - Database dumps: `/srv/backups/database-dumps`
 - Local Borg repo: `/srv/backups/borg-local`
 
 ## Local Domains
 
 - Home Assistant: `ha.home.arpa`
-- Nextcloud: `cloud.home.arpa`
+- Seafile: `cloud.home.arpa`
 - Immich: `photos.home.arpa`
 
 These are local-use names. The server is intended for local network and
@@ -90,7 +93,7 @@ Before adding a new service, check:
 2. How much RAM and idle CPU does it need?
 3. Where will its persistent state live under `/srv`?
 4. How is it backed up and restored?
-5. Does it duplicate Nextcloud, Immich, or Home Assistant functionality?
+5. Does it duplicate Seafile, Immich, or Home Assistant functionality?
 6. Can it live behind Tailscale/local DNS?
 
 If the answer is unclear, start with a small isolated service and document the
