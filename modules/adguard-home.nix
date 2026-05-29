@@ -10,7 +10,10 @@
 
     settings = {
       dns = {
-        bind_hosts = [ "0.0.0.0" ];
+        bind_hosts = [
+          "127.0.0.1"
+          server.tailscaleAddress
+        ];
         port = 53;
         upstream_dns = [
           "https://dns10.quad9.net/dns-query"
