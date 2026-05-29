@@ -8,6 +8,7 @@
 
 let
   hetzner = server.backups.hetzner or { enable = false; };
+  notify = server.backups.notify or { enable = false; };
   hetznerRepo = suffix: "ssh://${hetzner.user}@${hetzner.host}:23/./${hetzner.repoPrefix}/${suffix}";
   hetznerCommon = {
     compression = "zstd,6";
@@ -19,6 +20,8 @@ let
       BORG_RSH = "${pkgs.openssh}/bin/ssh -i ${hetzner.sshKeyFile} -o StrictHostKeyChecking=accept-new";
     };
     extraArgs = [ "--remote-path=borg-1.4" ];
+    # --stats so the journal has a summary the notifier can email.
+    extraCreateArgs = [ "--stats" ];
     prune.keep = {
       daily = 7;
       weekly = 4;
@@ -26,6 +29,7 @@ let
     };
   };
 in
+lib.mkMerge [
 {
   systemd.services.dump-family-service-databases = {
     description = "Dump Seafile and Immich databases";
@@ -140,3 +144,70 @@ in
     };
   };
 }
+
+(lib.mkIf (notify.enable && hetzner.enable) (
+  let
+    notifyUnit = job: "borg-notify@${job}.service";
+    jobs = [
+      "family-hetzner"
+      "home-assistant-hetzner"
+    ];
+  in
+  {
+    programs.msmtp = {
+      enable = true;
+      accounts.default = {
+        auth = true;
+        tls = true;
+        host = notify.smtpHost;
+        port = notify.smtpPort;
+        user = notify.smtpUser;
+        from = notify.from;
+        passwordeval = "${pkgs.coreutils}/bin/cat ${notify.passwordFile}";
+      };
+    };
+
+    systemd.services = {
+      "borg-notify@" = {
+        description = "Email summary for borg job %i";
+        serviceConfig.Type = "oneshot";
+        scriptArgs = "%i";
+        script = ''
+          job="$1"
+          unit="borgbackup-job-$job.service"
+          result="$(${pkgs.systemd}/bin/systemctl show "$unit" -p Result --value)"
+          if [ "$result" = "success" ]; then
+            subject="[backup OK] $job @ ${config.networking.hostName}"
+          else
+            subject="[BACKUP FAILED] $job ($result) @ ${config.networking.hostName}"
+          fi
+          stats="$(${pkgs.systemd}/bin/journalctl -u "$unit" -n 400 --no-pager 2>/dev/null \
+            | ${pkgs.gnugrep}/bin/grep -aiE 'Archive name|Time \(end\)|Duration|Number of files|Original size|Compressed size|Deduplicated size|This archive|All archives' \
+            | ${pkgs.coreutils}/bin/tail -n 20 || true)"
+          if [ -z "$stats" ]; then
+            stats="$(${pkgs.systemd}/bin/journalctl -u "$unit" -n 60 --no-pager 2>/dev/null \
+              | ${pkgs.gnugrep}/bin/grep -avE 'post-quantum|decrypt later|openssh.com/pq|may need to be upgraded|vulnerable' \
+              | ${pkgs.coreutils}/bin/tail -n 25 || true)"
+          fi
+          {
+            printf 'From: %s\n' '${notify.from}'
+            printf 'To: %s\n' '${notify.to}'
+            printf 'Subject: %s\n\n' "$subject"
+            printf 'Job:    %s\nResult: %s\nHost:   %s\n\n' "$job" "$result" '${config.networking.hostName}'
+            printf '%s\n' "$stats"
+          } | ${pkgs.msmtp}/bin/msmtp -C /etc/msmtprc -a default '${notify.to}'
+        '';
+      };
+    }
+    // builtins.listToAttrs (
+      map (j: {
+        name = "borgbackup-job-${j}";
+        value = {
+          onFailure = [ (notifyUnit j) ];
+          onSuccess = lib.optionals notify.onSuccess [ (notifyUnit j) ];
+        };
+      }) jobs
+    );
+  }
+))
+]

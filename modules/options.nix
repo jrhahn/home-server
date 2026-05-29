@@ -93,6 +93,48 @@ in
         description = "Path to the Borg passphrase on the server (not in the Nix store).";
       };
     };
+
+    backups.notify = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = "Email a summary after each Hetzner backup job (and on failure).";
+      };
+      onSuccess = mkOption {
+        type = types.bool;
+        default = true;
+        description = "Email on success too. If false, only failures are sent.";
+      };
+      to = mkOption {
+        type = types.str;
+        default = "";
+        example = "me@example.com";
+      };
+      from = mkOption {
+        type = types.str;
+        default = "";
+        description = "Sender address. For Gmail this must equal smtpUser.";
+      };
+      smtpHost = mkOption {
+        type = types.str;
+        default = "";
+        example = "smtp.gmail.com";
+      };
+      smtpPort = mkOption {
+        type = types.port;
+        default = 587;
+      };
+      smtpUser = mkOption {
+        type = types.str;
+        default = "";
+        example = "me@gmail.com";
+      };
+      passwordFile = mkOption {
+        type = types.str;
+        default = "/var/lib/secrets/msmtp-password";
+        description = "Path to the SMTP password / Gmail App Password (not in the Nix store).";
+      };
+    };
   };
 
   config = {
@@ -109,6 +151,17 @@ in
         assertion =
           !cfg.backups.hetzner.enable || (cfg.backups.hetzner.user != "" && cfg.backups.hetzner.host != "");
         message = "server.backups.hetzner.enable requires server.backups.hetzner.user and .host to be set.";
+      }
+      {
+        assertion =
+          !cfg.backups.notify.enable
+          || (
+            cfg.backups.notify.to != ""
+            && cfg.backups.notify.from != ""
+            && cfg.backups.notify.smtpHost != ""
+            && cfg.backups.notify.smtpUser != ""
+          );
+        message = "server.backups.notify.enable requires to, from, smtpHost, and smtpUser to be set.";
       }
     ];
   };

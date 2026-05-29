@@ -23,9 +23,20 @@
 
     # Optional: second backup copy to a Hetzner Storage Box.
     backups.hetzner = {
-      enable = false;
+      enable = true;
       user = "u123456";
       host = "u123456.your-storagebox.de";
+    };
+
+    # Optional: email a summary after each Hetzner backup. The SMTP password
+    # (e.g. a Gmail App Password) lives in /var/lib/secrets/msmtp-password.
+    backups.notify = {
+      enable = true;
+      to = "me@example.com";
+      from = "server@example.com";
+      smtpHost = "smtp.gmail.com";
+      smtpPort = 587;
+      smtpUser = "server@example.com";
     };
   };
 }
