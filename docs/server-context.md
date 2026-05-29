@@ -18,6 +18,7 @@ heavy workloads that assume a modern desktop CPU or lots of RAM.
 
 - Home Assistant Core on NixOS
 - Seafile for family file sync and sharing
+- Forgejo for private Git hosting
 - Immich for family photo/video backup and browsing
 - nginx reverse proxy
 - Tailscale for private remote access
@@ -42,6 +43,7 @@ heavy workloads that assume a modern desktop CPU or lots of RAM.
 - Seafile: `/srv/seafile`
 - Seafile MariaDB: `/srv/seafile-mysql`
 - Seafile Redis: `/srv/seafile-redis`
+- Forgejo: `/srv/forgejo`
 - Immich generated data/cache: `/srv/immich`
 - Immich originals, future HDD mount: `/srv/immich-originals`
 - Database dumps: `/srv/backups/database-dumps`
@@ -51,6 +53,7 @@ heavy workloads that assume a modern desktop CPU or lots of RAM.
 
 - Home Assistant: `ha.home.arpa`
 - Seafile: `cloud.home.arpa`
+- Forgejo: `git.home.arpa`
 - Immich: `photos.home.arpa`
 
 These are local-use names. The server is intended for local network and

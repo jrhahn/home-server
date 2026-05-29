@@ -4,6 +4,7 @@ let
   server = {
     adminUser = "admin";
     cloudDomain = "cloud.home.arpa";
+    gitDomain = "git.home.arpa";
     homeAssistantDomain = "ha.home.arpa";
     photosDomain = "photos.home.arpa";
     # Update this if Tailscale assigns a different address to the server.
@@ -18,6 +19,7 @@ in
     ../../modules/adguard-home.nix
     ../../modules/base.nix
     ../../modules/docker.nix
+    ../../modules/forgejo.nix
     ../../modules/home-assistant.nix
     ../../modules/immich.nix
     ../../modules/reverse-proxy.nix

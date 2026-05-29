@@ -10,6 +10,7 @@ For a fresh machine setup, follow [INSTALLATION.md](INSTALLATION.md).
 This setup uses NixOS services and a small Podman-based Seafile stack for:
 
 - Seafile
+- Forgejo
 - Home Assistant
 - Immich
 - PostgreSQL, MariaDB, and Redis dependencies
@@ -31,6 +32,7 @@ Podman is enabled for Seafile because NixOS 25.11 removed the old native
 3. Edit [hosts/family-server/default.nix](hosts/family-server/default.nix) and set:
 
    - `cloudDomain`
+   - `gitDomain`
    - `homeAssistantDomain`
    - `photosDomain`
    - `enablePublicTls`
@@ -59,6 +61,7 @@ Podman is enabled for Seafile because NixOS 25.11 removed the old native
 Default local hostnames:
 
 - Seafile: `http://cloud.home.arpa`
+- Forgejo: `http://git.home.arpa`
 - Home Assistant: `http://ha.home.arpa`
 - Immich: `http://photos.home.arpa`
 
@@ -66,6 +69,13 @@ Getting started:
 
 - [Seafile guide](docs/seafile-getting-started.md)
 - [Immich guide](docs/immich-getting-started.md)
+
+Forgejo registration is disabled. After the first switch, create the initial
+admin account on the server:
+
+```bash
+sudo -u forgejo forgejo --config /srv/forgejo/custom/conf/app.ini --work-path /srv/forgejo admin user create --admin --username admin --email admin@example.invalid --password 'change-me'
+```
 
 ## Home Assistant Migration
 
@@ -102,9 +112,11 @@ Local Borg backups are configured in [modules/maintenance.nix](modules/maintenan
 - `home-assistant-local`: stops Home Assistant briefly and backs up
   `/srv/home-assistant` at 03:45.
 - `family-local`: dumps the Seafile MariaDB databases and Immich PostgreSQL
-  database, then backs up the DB dumps, `/var/lib/secrets`, `/srv/seafile`,
+  database, then backs up the DB dumps, `/var/lib/secrets`, `/srv/forgejo`,
+  `/srv/seafile`,
   `/srv/seafile-mysql`,
   `/srv/seafile-redis`, `/srv/immich`, and `/srv/immich-originals` at 04:00.
+  Forgejo also writes its own dump under `/srv/forgejo/dump` at 03:30.
 
 Initialize the local repo once:
 

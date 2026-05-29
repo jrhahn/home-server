@@ -33,6 +33,7 @@
 
   networking.hosts.${server.tailscaleAddress} = [
     server.cloudDomain
+    server.gitDomain
     server.homeAssistantDomain
     server.photosDomain
   ];

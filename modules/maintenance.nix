@@ -37,6 +37,7 @@
     paths = [
       "/var/lib/secrets"
       "/srv/backups/database-dumps"
+      "/srv/forgejo"
       "/srv/immich"
       "/srv/immich-originals"
       "/srv/seafile"
