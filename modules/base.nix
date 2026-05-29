@@ -30,6 +30,8 @@
     defaults.email = "admin@example.invalid";
   };
 
+  programs.direnv.enable = true;
+
   environment.systemPackages = with pkgs; [
     borgbackup
     btop

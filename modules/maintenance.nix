@@ -1,5 +1,31 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  server,
+  ...
+}:
 
+let
+  hetzner = server.backups.hetzner or { enable = false; };
+  hetznerRepo = suffix: "ssh://${hetzner.user}@${hetzner.host}:23/./${hetzner.repoPrefix}/${suffix}";
+  hetznerCommon = {
+    compression = "zstd,6";
+    encryption = {
+      mode = "repokey-blake2";
+      passCommand = "${pkgs.coreutils}/bin/cat ${hetzner.passphraseFile}";
+    };
+    environment = {
+      BORG_RSH = "${pkgs.openssh}/bin/ssh -i ${hetzner.sshKeyFile} -o StrictHostKeyChecking=accept-new";
+    };
+    extraArgs = [ "--remote-path=borg-1.4" ];
+    prune.keep = {
+      daily = 7;
+      weekly = 4;
+      monthly = 12;
+    };
+  };
+in
 {
   systemd.services.dump-family-service-databases = {
     description = "Dump Seafile and Immich databases";
@@ -33,49 +59,84 @@
     '';
   };
 
-  services.borgbackup.jobs.family-local = {
-    paths = [
-      "/var/lib/secrets"
-      "/srv/backups/database-dumps"
-      "/srv/forgejo"
-      "/srv/immich"
-      "/srv/immich-originals"
-      "/srv/seafile"
-      "/srv/seafile-mysql"
-      "/srv/seafile-redis"
-    ];
-    repo = "/srv/backups/borg-local";
-    startAt = "04:00";
-    compression = "zstd,6";
-    encryption.mode = "none";
-    prune.keep = {
-      daily = 7;
-      weekly = 4;
-      monthly = 6;
+  services.borgbackup.jobs = {
+    family-local = {
+      paths = [
+        "/var/lib/secrets"
+        "/srv/backups/database-dumps"
+        "/srv/forgejo"
+        "/srv/immich"
+        "/srv/immich-originals"
+        "/srv/seafile"
+        "/srv/seafile-mysql"
+        "/srv/seafile-redis"
+      ];
+      repo = "/srv/backups/borg-local";
+      startAt = "04:00";
+      compression = "zstd,6";
+      encryption.mode = "none";
+      prune.keep = {
+        daily = 7;
+        weekly = 4;
+        monthly = 6;
+      };
+      preHook = ''
+        ${pkgs.systemd}/bin/systemctl start dump-family-service-databases.service
+      '';
     };
-    preHook = ''
-      ${pkgs.systemd}/bin/systemctl start dump-family-service-databases.service
-    '';
-  };
 
-  services.borgbackup.jobs.home-assistant-local = {
-    paths = [
-      "/srv/home-assistant"
-    ];
-    repo = "/srv/backups/borg-local";
-    startAt = "03:45";
-    compression = "zstd,6";
-    encryption.mode = "none";
-    prune.keep = {
-      daily = 7;
-      weekly = 4;
-      monthly = 6;
+    home-assistant-local = {
+      paths = [
+        "/srv/home-assistant"
+      ];
+      repo = "/srv/backups/borg-local";
+      startAt = "03:45";
+      compression = "zstd,6";
+      encryption.mode = "none";
+      prune.keep = {
+        daily = 7;
+        weekly = 4;
+        monthly = 6;
+      };
+      preHook = ''
+        ${pkgs.systemd}/bin/systemctl stop home-assistant.service
+      '';
+      postHook = ''
+        ${pkgs.systemd}/bin/systemctl start home-assistant.service
+      '';
     };
-    preHook = ''
-      ${pkgs.systemd}/bin/systemctl stop home-assistant.service
-    '';
-    postHook = ''
-      ${pkgs.systemd}/bin/systemctl start home-assistant.service
-    '';
+  }
+  // lib.optionalAttrs hetzner.enable {
+    family-hetzner = hetznerCommon // {
+      paths = [
+        "/var/lib/secrets"
+        "/srv/backups/database-dumps"
+        "/srv/forgejo"
+        "/srv/immich"
+        "/srv/immich-originals"
+        "/srv/seafile"
+        "/srv/seafile-mysql"
+        "/srv/seafile-redis"
+      ];
+      repo = hetznerRepo "family";
+      startAt = "04:30";
+      preHook = ''
+        ${pkgs.systemd}/bin/systemctl start dump-family-service-databases.service
+      '';
+    };
+
+    home-assistant-hetzner = hetznerCommon // {
+      paths = [
+        "/srv/home-assistant"
+      ];
+      repo = hetznerRepo "home-assistant";
+      startAt = "04:15";
+      preHook = ''
+        ${pkgs.systemd}/bin/systemctl stop home-assistant.service
+      '';
+      postHook = ''
+        ${pkgs.systemd}/bin/systemctl start home-assistant.service
+      '';
+    };
   };
 }

@@ -20,35 +20,57 @@ This setup uses NixOS services and a small Podman-based Seafile stack for:
 Podman is enabled for Seafile because NixOS 25.11 removed the old native
 `services.seafile` module, and for future services without a good NixOS module.
 
+## Layout: shareable repo + private instance
+
+This repo is the **shareable** half. It contains only reusable NixOS modules,
+exposed as `nixosModules.default`, with no credentials or machine-specific
+values. All per-deployment values are declared as `server.*` options in
+[modules/options.nix](modules/options.nix).
+
+Your **private** half is a separate flake that imports this one and supplies the
+personal bits: a `local.nix` (Tailscale IP, SSH keys, Storage Box coordinates)
+and a `hardware-configuration.nix`. Because you never edit the shared repo
+locally, there are no untracked files and no merge conflicts here — you pull
+improvements with `nix flake update`. A ready-to-copy template lives in
+[example/](example). Actual secrets (private keys, passphrases, DB passwords)
+never live in either repo; they stay in `/var/lib/secrets` on the server.
+
+The `nixosConfigurations.family-server` defined in this repo is built from the
+placeholder values in [example/](example) — it is for `nix flake check` and as a
+reference only. Do not deploy it directly; deploy your private flake.
+
 ## First Install
 
 1. Install NixOS 25.11 on the server.
-2. Copy the generated hardware config into this repo:
+2. Create your private config from the template (a directory or its own repo):
 
    ```bash
-   sudo nixos-generate-config --show-hardware-config > hosts/family-server/hardware-configuration.nix
+   mkdir ~/home-server-private && cd ~/home-server-private
+   cp /path/to/home-server/example/flake.nix .
+   cp /path/to/home-server/example/local.nix .
+   sudo nixos-generate-config --show-hardware-config > hardware-configuration.nix
    ```
 
-3. Edit [hosts/family-server/default.nix](hosts/family-server/default.nix) and set:
+3. Edit `flake.nix` to point `home-server.url` at this repo, then edit
+   `local.nix` and set at least:
 
-   - `cloudDomain`
-   - `adguardDomain`
-   - `gitDomain`
-   - `homeAssistantDomain`
-   - `photosDomain`
-   - `enablePublicTls`
-   - the SSH public key for `admin`
+   - `server.tailscaleAddress`
+   - `server.adminSshKeys`
+   - `server.backups.hetzner` (if using a Storage Box)
+   - any domain / `enablePublicTls` overrides (defaults are `*.home.arpa`,
+     private-only)
 
-4. Create Seafile secrets:
+4. Create Seafile secrets (script lives in this repo; run it from a checkout on
+   the server):
 
    ```bash
    ./scripts/create-seafile-secrets.sh
    ```
 
-5. Build and switch:
+5. Build and switch from your **private** flake:
 
    ```bash
-   sudo nixos-rebuild switch --flake .#family-server
+   sudo nixos-rebuild switch --flake ~/home-server-private#family-server
    ```
 
 6. Initialize the local Borg repo once:
@@ -130,9 +152,14 @@ This protects against local app mistakes, but not disk loss. Add a second Borg
 or restic target to an external disk or offsite location before trusting the box
 with family photos.
 
+Remote Borg backups to a Hetzner Storage Box can be enabled with the
+`server.backups.hetzner` settings in your private `local.nix`. See
+[Hetzner Storage Box backups](docs/hetzner-storage-box-backups.md) for the
+setup steps.
+
 This server is intended for local network and Tailscale access only. Public
-HTTPS is disabled through `enablePublicTls = false`; do not expose it through
-the router.
+HTTPS is disabled through `server.enablePublicTls = false`; do not expose it
+through the router.
 
 ## Notes
 

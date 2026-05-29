@@ -95,31 +95,47 @@ the first clone:
 nix-shell -p git openssl
 ```
 
-## 3. Clone This Repo
+## 3. Clone This Repo and Create Your Private Config
 
-On the new machine:
+This repo is the shareable module set. Your machine is configured by a separate,
+private flake that imports it. On the new machine:
 
 ```bash
+# the shareable repo (for scripts and as the flake input)
 git clone <this-repo-url> ~/home-server
-cd ~/home-server
+
+# your private config, from the template
+mkdir ~/home-server-private && cd ~/home-server-private
+cp ~/home-server/example/flake.nix .
+cp ~/home-server/example/local.nix .
 ```
 
-## 4. Replace Hardware Config
+In `flake.nix`, point `home-server.url` at the shared repo. For a local-only
+setup you can use the checkout directly:
 
-Generate the real hardware config for the new machine:
+```nix
+home-server.url = "git+file:///home/admin/home-server";
+```
+
+## 4. Generate Hardware Config
+
+Into your **private** config:
 
 ```bash
-sudo nixos-generate-config --show-hardware-config > hosts/family-server/hardware-configuration.nix
+cd ~/home-server-private
+sudo nixos-generate-config --show-hardware-config > hardware-configuration.nix
 ```
 
 ## 5. Edit Server Settings
 
-Edit `hosts/family-server/default.nix`:
+Edit `~/home-server-private/local.nix`:
 
-- add your SSH public key for `admin`; SSH is enabled in `modules/base.nix`,
-  but password login is disabled in the final config
-- adjust `cloudDomain`, `homeAssistantDomain`, and `photosDomain`
-- keep `enablePublicTls = false`
+- set `server.adminSshKeys` to your SSH public key(s); SSH is enabled in
+  `modules/base.nix`, but password login is disabled in the final config
+- set `server.tailscaleAddress`
+- adjust `server.cloudDomain`, `server.homeAssistantDomain`,
+  `server.photosDomain` if not using the defaults
+- keep `server.enablePublicTls = false`
 
 This setup is intentionally private-only. Do not expose ports 80/443 through the
 router and do not enable public ACME/HTTPS unless the architecture is reviewed
@@ -128,7 +144,7 @@ again.
 ## 6. Create Secrets
 
 ```bash
-./scripts/create-seafile-secrets.sh
+~/home-server/scripts/create-seafile-secrets.sh
 ```
 
 ## 7. Apply NixOS Config
@@ -137,7 +153,7 @@ This applies the home-server config, including Git, German keyboard layout, zsh,
 and a default Oh My Zsh setup for the `admin` user.
 
 ```bash
-sudo nixos-rebuild switch --flake .#family-server
+sudo nixos-rebuild switch --flake ~/home-server-private#family-server
 ```
 
 ## 8. Initialize Backups
