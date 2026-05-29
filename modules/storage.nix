@@ -26,7 +26,7 @@
     "f /srv/immich-originals/upload/.immich 0600 immich immich -"
     "d /srv/seafile 0750 root root -"
     "d /srv/seafile-mysql 0750 root root -"
-    "d /srv/seafile-redis 0750 root root -"
+    "d /srv/seafile-redis 0770 999 999 -"
     "d /srv/backups 0750 root root -"
     "d /srv/backups/database-dumps 0750 root root -"
   ];
