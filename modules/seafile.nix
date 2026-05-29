@@ -27,12 +27,6 @@
         "/srv/seafile-mysql:/var/lib/mysql"
       ];
       networks = [ "seafile" ];
-      extraOptions = [
-        "--health-cmd=healthcheck.sh --connect --mariadbupgrade --innodb_initialized"
-        "--health-interval=20s"
-        "--health-timeout=5s"
-        "--health-retries=10"
-      ];
     };
 
     seafile-redis = {
