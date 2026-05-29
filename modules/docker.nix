@@ -1,12 +1,13 @@
 { pkgs, ... }:
 
 {
-  # Seafile uses Docker because the native NixOS module was removed in 25.11.
+  # Seafile uses Podman/OCI containers because the native NixOS module was removed in 25.11.
   # Immich and Home Assistant are configured natively in this repository.
-  virtualisation.docker.enable = true;
+  virtualisation.podman.enable = true;
+  virtualisation.oci-containers.backend = "podman";
 
   environment.systemPackages = with pkgs; [
-    docker
-    docker-compose
+    podman
+    podman-compose
   ];
 }

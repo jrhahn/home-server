@@ -23,7 +23,7 @@ heavy workloads that assume a modern desktop CPU or lots of RAM.
 - Tailscale for private remote access
 - PostgreSQL, MariaDB, and Redis where required by services
 - Borg backups
-- Docker for Seafile and as an escape hatch for services without a good NixOS module
+- Podman for Seafile and as an escape hatch for services without a good NixOS module
 
 ## Design Principles
 

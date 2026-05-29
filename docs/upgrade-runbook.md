@@ -30,8 +30,8 @@ Use small, observable upgrades for stateful services.
 5. Check services:
 
    ```bash
-   systemctl status docker-seafile.service docker-seafile-mysql.service immich-server.service
-   journalctl -u docker-seafile.service -u immich-server.service --since '30 min ago'
+   systemctl status podman-seafile.service podman-seafile-mysql.service immich-server.service
+   journalctl -u podman-seafile.service -u immich-server.service --since '30 min ago'
    ```
 
 6. If the host config is bad, roll back:

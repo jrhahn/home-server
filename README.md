@@ -7,7 +7,7 @@ start with [docs/server-context.md](docs/server-context.md).
 
 For a fresh machine setup, follow [INSTALLATION.md](INSTALLATION.md).
 
-This setup uses NixOS services and a small Docker-based Seafile stack for:
+This setup uses NixOS services and a small Podman-based Seafile stack for:
 
 - Seafile
 - Home Assistant
@@ -16,7 +16,7 @@ This setup uses NixOS services and a small Docker-based Seafile stack for:
 - nginx reverse proxy
 - database dumps and local Borg backups
 
-Docker is enabled for Seafile because NixOS 25.11 removed the old native
+Podman is enabled for Seafile because NixOS 25.11 removed the old native
 `services.seafile` module, and for future services without a good NixOS module.
 
 ## First Install

@@ -59,24 +59,24 @@ should be reviewed separately before enabling it.
 
 ## Maintenance
 
-Seafile runs as Docker containers:
+Seafile runs as Podman containers:
 
 ```bash
-systemctl status docker-seafile.service
-systemctl status docker-seafile-mysql.service
-systemctl status docker-seafile-redis.service
+systemctl status podman-seafile.service
+systemctl status podman-seafile-mysql.service
+systemctl status podman-seafile-redis.service
 ```
 
 To watch Seafile logs:
 
 ```bash
-docker logs seafile -f
+podman logs seafile -f
 ```
 
 To create or reset an admin account after setup:
 
 ```bash
-docker exec -it seafile /opt/seafile/seafile-server-latest/reset-admin.sh
+podman exec -it seafile /opt/seafile/seafile-server-latest/reset-admin.sh
 ```
 
 ## Troubleshooting
@@ -87,5 +87,5 @@ If the page does not load, check DNS and the service:
 dig cloud.home.arpa
 curl -I http://cloud.home.arpa
 systemctl status nginx.service
-systemctl status docker-seafile.service
+systemctl status podman-seafile.service
 ```

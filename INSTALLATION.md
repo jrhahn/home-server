@@ -196,7 +196,7 @@ After this, phones and laptops connected to Tailscale can use:
 
 ```bash
 systemctl status home-assistant.service
-systemctl status docker-seafile.service
+systemctl status podman-seafile.service
 systemctl status immich-server.service
 systemctl status adguardhome.service
 ```

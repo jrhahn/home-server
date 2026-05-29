@@ -14,11 +14,11 @@
       out="/srv/backups/database-dumps/$(${pkgs.coreutils}/bin/date -u +%Y%m%dT%H%M%SZ)"
       ${pkgs.coreutils}/bin/mkdir -p "$out"
 
-      if ${pkgs.docker}/bin/docker ps --format '{{.Names}}' | ${pkgs.gnugrep}/bin/grep -qx seafile-mysql; then
+      if ${pkgs.podman}/bin/podman ps --format '{{.Names}}' | ${pkgs.gnugrep}/bin/grep -qx seafile-mysql; then
         set -a
         . /var/lib/secrets/seafile.env
         set +a
-        ${pkgs.docker}/bin/docker exec seafile-mysql mariadb-dump \
+        ${pkgs.podman}/bin/podman exec seafile-mysql mariadb-dump \
           --single-transaction \
           --quick \
           --user=root \

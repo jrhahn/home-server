@@ -1,17 +1,17 @@
-{ server, ... }:
+{ pkgs, server, ... }:
 
 {
-  systemd.services.docker-network-seafile = {
-    description = "Create Docker network for Seafile";
+  systemd.services.podman-network-seafile = {
+    description = "Create Podman network for Seafile";
     wantedBy = [ "multi-user.target" ];
-    after = [ "docker.service" ];
-    requires = [ "docker.service" ];
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
     };
     script = ''
-      docker network inspect seafile >/dev/null 2>&1 || docker network create seafile
+      ${pkgs.podman}/bin/podman network inspect seafile >/dev/null 2>&1 || ${pkgs.podman}/bin/podman network create seafile
     '';
   };
 
@@ -83,23 +83,23 @@
     };
   };
 
-  systemd.services.docker-seafile-mysql = {
-    after = [ "docker-network-seafile.service" ];
-    requires = [ "docker-network-seafile.service" ];
+  systemd.services.podman-seafile-mysql = {
+    after = [ "podman-network-seafile.service" ];
+    requires = [ "podman-network-seafile.service" ];
   };
 
-  systemd.services.docker-seafile-redis = {
-    after = [ "docker-network-seafile.service" ];
-    requires = [ "docker-network-seafile.service" ];
+  systemd.services.podman-seafile-redis = {
+    after = [ "podman-network-seafile.service" ];
+    requires = [ "podman-network-seafile.service" ];
   };
 
-  systemd.services.docker-seafile = {
+  systemd.services.podman-seafile = {
     after = [
-      "docker-network-seafile.service"
-      "docker-seafile-mysql.service"
-      "docker-seafile-redis.service"
+      "podman-network-seafile.service"
+      "podman-seafile-mysql.service"
+      "podman-seafile-redis.service"
     ];
-    requires = [ "docker-network-seafile.service" ];
+    requires = [ "podman-network-seafile.service" ];
   };
 
   services.nginx.virtualHosts.${server.cloudDomain} = {
