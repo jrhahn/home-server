@@ -2,7 +2,7 @@
 
 let
   forgejoAddress = "127.0.0.1";
-  forgejoPort = 3000;
+  forgejoPort = 3001;
   protocol = if server.enablePublicTls then "https" else "http";
 in
 {

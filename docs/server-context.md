@@ -51,6 +51,7 @@ heavy workloads that assume a modern desktop CPU or lots of RAM.
 
 ## Local Domains
 
+- AdGuard Home: `adguard.home.arpa`
 - Home Assistant: `ha.home.arpa`
 - Seafile: `cloud.home.arpa`
 - Forgejo: `git.home.arpa`

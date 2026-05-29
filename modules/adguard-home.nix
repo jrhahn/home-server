@@ -1,4 +1,4 @@
-{ server, ... }:
+{ config, server, ... }:
 
 {
   services.adguardhome = {
@@ -29,7 +29,15 @@
         protection_enabled = true;
         rewrites = [
           {
+            domain = server.adguardDomain;
+            answer = server.tailscaleAddress;
+          }
+          {
             domain = server.cloudDomain;
+            answer = server.tailscaleAddress;
+          }
+          {
+            domain = server.gitDomain;
             answer = server.tailscaleAddress;
           }
           {
@@ -42,6 +50,16 @@
           }
         ];
       };
+    };
+  };
+
+  services.nginx.virtualHosts.${server.adguardDomain} = {
+    enableACME = server.enablePublicTls;
+    forceSSL = server.enablePublicTls;
+
+    locations."/" = {
+      proxyPass = "http://${config.services.adguardhome.host}:${toString config.services.adguardhome.port}";
+      recommendedProxySettings = true;
     };
   };
 

@@ -32,6 +32,7 @@ Podman is enabled for Seafile because NixOS 25.11 removed the old native
 3. Edit [hosts/family-server/default.nix](hosts/family-server/default.nix) and set:
 
    - `cloudDomain`
+   - `adguardDomain`
    - `gitDomain`
    - `homeAssistantDomain`
    - `photosDomain`
@@ -60,6 +61,7 @@ Podman is enabled for Seafile because NixOS 25.11 removed the old native
 
 Default local hostnames:
 
+- AdGuard Home: `http://adguard.home.arpa`
 - Seafile: `http://cloud.home.arpa`
 - Forgejo: `http://git.home.arpa`
 - Home Assistant: `http://ha.home.arpa`

@@ -32,6 +32,7 @@
   ];
 
   networking.hosts.${server.tailscaleAddress} = [
+    server.adguardDomain
     server.cloudDomain
     server.gitDomain
     server.homeAssistantDomain

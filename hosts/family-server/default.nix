@@ -3,6 +3,7 @@
 let
   server = {
     adminUser = "admin";
+    adguardDomain = "adguard.home.arpa";
     cloudDomain = "cloud.home.arpa";
     gitDomain = "git.home.arpa";
     homeAssistantDomain = "ha.home.arpa";
