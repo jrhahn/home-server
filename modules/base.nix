@@ -49,6 +49,7 @@
     lsof
     ncdu
     nix-output-monitor
+    openssl
     pciutils
     psmisc
     ripgrep
