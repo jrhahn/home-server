@@ -4,7 +4,14 @@
   services.home-assistant = {
     enable = true;
     configDir = "/srv/home-assistant";
-    config = null;
+    config = {
+      http = {
+        use_x_forwarded_for = true;
+        trusted_proxies = [
+          "127.0.0.1"
+        ];
+      };
+    };
     configWritable = true;
     openFirewall = false;
 
