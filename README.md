@@ -104,20 +104,26 @@ sudo -u forgejo forgejo --config /srv/forgejo/custom/conf/app.ini --work-path /s
 ## Home Assistant Migration
 
 The safe parts of the Pi config are tracked in
-[home-assistant/config](home-assistant/config). The private state has been copied
-into `.ha-import/homeassistant/`, which is ignored by git because it contains
-Home Assistant storage, auth data, Zigbee state, and secrets.
+[home-assistant/config](home-assistant/config). The full Pi state (Home
+Assistant storage, auth data, Zigbee state, and secrets) lives in the **private**
+repo at `ha-import/homeassistant/` — keep it out of any public repo.
 
-After installing NixOS on the new server, copy it into the service config dir:
+After installing NixOS on the new server, import it into the service config dir,
+pointing `HA_IMPORT_DIR` at the snapshot in your private checkout:
 
 ```bash
-./scripts/import-home-assistant-config.sh
+HA_IMPORT_DIR=~/home-server-private/ha-import/homeassistant \
+  ./scripts/import-home-assistant-config.sh
 ```
 
-The import intentionally excludes Home Assistant logs, caches, and
-`home-assistant_v2.db*`. Keep the Pi powered off or Home Assistant stopped
-during the final migration if you want to avoid changes happening on both
-systems at once.
+This is a one-time migration: afterwards `/srv/home-assistant` is the live source
+of truth and is covered by the Borg backups. The import intentionally excludes
+Home Assistant logs, caches, and `home-assistant_v2.db*` (you start with fresh
+history). It stops Home Assistant first, so keep the Pi powered off during the
+final cutover to avoid changes on both systems at once.
+
+Zigbee (ZHA) pairings in `zigbee.db` only survive if you physically move the
+**same Zigbee USB coordinator** from the Pi to the server.
 
 The NixOS Home Assistant module includes the built-in integrations listed in
 the Pi's `.storage/core.config_entries`: ZHA, Tuya, TP-Link, Denon/HEOS, mobile

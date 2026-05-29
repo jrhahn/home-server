@@ -3,7 +3,10 @@ set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 tracked_source_dir="${repo_root}/home-assistant/config/"
-private_source_dir="${repo_root}/.ha-import/homeassistant/"
+# The private Pi snapshot now lives in the private repo. Override with
+# HA_IMPORT_DIR, e.g. HA_IMPORT_DIR=~/home-server-private/ha-import/homeassistant
+private_source_dir="${HA_IMPORT_DIR:-${repo_root}/.ha-import/homeassistant}"
+private_source_dir="${private_source_dir%/}/"
 target_dir="/srv/home-assistant/"
 
 if [[ ! -d "${tracked_source_dir}" ]]; then
