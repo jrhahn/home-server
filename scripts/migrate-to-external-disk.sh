@@ -51,8 +51,10 @@ systemctl stop podman-seafile.service podman-seafile-mysql.service podman-seafil
 
 echo "==> Mounting ${device} at ${mountpoint}"
 mkdir -p "${mountpoint}"
+we_mounted=0
 if ! mountpoint -q "${mountpoint}"; then
   mount "${device}" "${mountpoint}"
+  we_mounted=1
 fi
 
 for src in "${datasets[@]}"; do
@@ -86,8 +88,12 @@ for src in "${datasets[@]}"; do
   mv "${src}" "${src}.pre-external"
 done
 
-echo "==> Unmounting ${mountpoint} (NixOS will remount it via fileSystems)"
-umount "${mountpoint}" || true
+if [[ "${we_mounted}" -eq 1 ]]; then
+  echo "==> Unmounting ${mountpoint} (NixOS will remount it via fileSystems)"
+  umount "${mountpoint}" || true
+else
+  echo "==> Leaving ${mountpoint} mounted (it was already mounted, e.g. live bind mounts depend on it)"
+fi
 
 cat <<EOF
 
