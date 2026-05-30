@@ -1,9 +1,16 @@
-{ config, server, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  server,
+  ...
+}:
 
 let
   forgejoAddress = "127.0.0.1";
   forgejoPort = 3001;
   protocol = if server.enablePublicTls then "https" else "http";
+  actions = server.forgejo.actions;
 in
 {
   environment.systemPackages = [
@@ -46,6 +53,30 @@ in
 
       session.COOKIE_SECURE = server.enablePublicTls;
       log.LEVEL = "Warn";
+
+      actions = lib.mkIf actions.enable {
+        ENABLED = true;
+        # Resolve `uses: actions/checkout@v4` against github.com for
+        # compatibility with GitHub-style workflows (needs outbound internet).
+        DEFAULT_ACTIONS_URL = "github";
+      };
+    };
+  };
+
+  # Local Actions runner. The NixOS module is Podman-aware: it points
+  # DOCKER_HOST at /run/podman/podman.sock and joins the `podman` group, so
+  # jobs run in containers via the already-enabled Podman backend.
+  services.gitea-actions-runner = lib.mkIf actions.enable {
+    package = pkgs.forgejo-runner;
+    instances.default = {
+      enable = true;
+      name = config.networking.hostName;
+      url = "http://localhost:${toString forgejoPort}";
+      tokenFile = actions.tokenFile;
+      labels = [
+        "ubuntu-latest:docker://node:20-bookworm"
+        "ubuntu-22.04:docker://node:20-bookworm"
+      ];
     };
   };
 

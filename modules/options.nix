@@ -108,6 +108,26 @@ in
       };
     };
 
+    forgejo.actions = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Enable Forgejo Actions and run a local act_runner that executes jobs
+          in containers via Podman. Requires a runner registration token at
+          tokenFile (see scripts/create-forgejo-runner-token.sh).
+        '';
+      };
+      tokenFile = mkOption {
+        type = types.str;
+        default = "/var/lib/secrets/forgejo-runner-token";
+        description = ''
+          systemd EnvironmentFile for the runner; must contain a single line
+          `TOKEN=<registration token>`. Kept on the server, not in the Nix store.
+        '';
+      };
+    };
+
     backups.hetzner = {
       enable = mkOption {
         type = types.bool;
