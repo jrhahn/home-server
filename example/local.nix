@@ -21,6 +21,17 @@
     # cloudDomain = "cloud.home.arpa";
     # enablePublicTls = false;
 
+    # Optional: relocate bulk data (Immich originals + Seafile files) onto an
+    # external disk, keeping OS/databases/caches on the internal disk. The
+    # device UUID is machine-specific — keep it here in your PRIVATE config,
+    # never in the shared repo. Find it with `lsblk -f` or `blkid`.
+    # See scripts/migrate-to-external-disk.sh for the one-time data move.
+    # storage.externalDisk = {
+    #   enable = true;
+    #   device = "/dev/disk/by-uuid/REPLACE-WITH-REAL-UUID";
+    #   fsType = "ext4";
+    # };
+
     # Optional: second backup copy to a Hetzner Storage Box.
     backups.hetzner = {
       enable = true;

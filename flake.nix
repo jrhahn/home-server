@@ -22,6 +22,7 @@
           ./modules/adguard-home.nix
           ./modules/base.nix
           ./modules/docker.nix
+          ./modules/external-storage.nix
           ./modules/forgejo.nix
           ./modules/home-assistant.nix
           ./modules/immich.nix

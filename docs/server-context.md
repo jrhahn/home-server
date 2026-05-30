@@ -45,7 +45,7 @@ heavy workloads that assume a modern desktop CPU or lots of RAM.
 - Seafile Redis: `/srv/seafile-redis`
 - Forgejo: `/srv/forgejo`
 - Immich generated data/cache: `/srv/immich`
-- Immich originals, future HDD mount: `/srv/immich-originals`
+- Immich originals: `/srv/immich-originals` (bind target; on external disk when `server.storage.externalDisk` is enabled)
 - Database dumps: `/srv/backups/database-dumps`
 - Local Borg repo: `/srv/backups/borg-local`
 
@@ -70,6 +70,28 @@ limits:
 - Prefer scheduled maintenance windows for backups and upgrades.
 - Use SSD storage for OS, databases, and application state.
 - Use a larger SSD/HDD for photos and files.
+
+## External Disk for Bulk Data
+
+`server.storage.externalDisk` relocates bulk, append-mostly, already-backed-up
+data onto a separate disk while keeping OS, databases, caches, and the local
+Borg repo on the internal disk. This matches the failure profile of an
+externally-attached disk: fine for large recoverable media, poor for
+fsync-heavy databases and anything whose corruption breaks a service.
+
+- Relocated by default: `/srv/immich-originals` and `/srv/seafile`.
+- Deliberately NOT relocated: the OS, Postgres, Seafile MariaDB/Redis
+  (`/srv/seafile-mysql`, `/srv/seafile-redis`), Immich caches (`/srv/immich`),
+  and the local Borg repo (`/srv/backups/borg-local`) — keeping source data and
+  its local backup on different disks.
+- Mechanism: the external disk mounts at `server.storage.externalDisk.mountPoint`
+  (default `/srv/external`), and each dataset is bind-mounted from
+  `<mountPoint>/<basename>`. Service `/srv` paths are unchanged, so the modules
+  and the Borg `paths` in `modules/maintenance.nix` need no edits.
+- All mounts use `nofail`, so a missing/late external disk does not block boot.
+- The device UUID is machine-specific: set `server.storage.externalDisk.device`
+  in the PRIVATE `local.nix`, never in the shared repo.
+- One-time data move: `scripts/migrate-to-external-disk.sh`.
 
 ## Home Assistant Migration
 

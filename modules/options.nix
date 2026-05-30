@@ -62,6 +62,52 @@ in
       '';
     };
 
+    storage.externalDisk = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Relocate bulk, append-mostly data (Immich originals, Seafile files)
+          onto a separate external disk via bind mounts, keeping the OS,
+          databases, and caches on the internal disk. The service paths under
+          /srv are unchanged, so backups and modules need no further edits.
+        '';
+      };
+      device = mkOption {
+        type = types.str;
+        default = "";
+        example = "/dev/disk/by-uuid/123e4567-e89b-12d3-a456-426614174000";
+        description = ''
+          Block device for the external disk. This is machine-specific — set it
+          in your PRIVATE config, not the shared repo. Prefer a stable
+          /dev/disk/by-uuid/... path (find it with `lsblk -f` or `blkid`).
+        '';
+      };
+      fsType = mkOption {
+        type = types.str;
+        default = "ext4";
+        description = "Filesystem type of the external disk.";
+      };
+      mountPoint = mkOption {
+        type = types.str;
+        default = "/srv/external";
+        description = "Where the external disk itself is mounted.";
+      };
+      datasets = mkOption {
+        type = types.listOf types.str;
+        default = [
+          "/srv/immich-originals"
+          "/srv/seafile"
+        ];
+        description = ''
+          Existing /srv data directories to relocate onto the external disk.
+          Each PATH is bind-mounted from <mountPoint>/<basename PATH>, so
+          /srv/immich-originals lives at <mountPoint>/immich-originals on the
+          external disk. Databases are deliberately left off this list.
+        '';
+      };
+    };
+
     backups.hetzner = {
       enable = mkOption {
         type = types.bool;
@@ -146,6 +192,10 @@ in
       {
         assertion = cfg.tailscaleAddress != "";
         message = "server.tailscaleAddress must be set in your private config (see ./example/local.nix).";
+      }
+      {
+        assertion = !cfg.storage.externalDisk.enable || cfg.storage.externalDisk.device != "";
+        message = "server.storage.externalDisk.enable requires server.storage.externalDisk.device (set it in your private config, e.g. /dev/disk/by-uuid/...).";
       }
       {
         assertion =
