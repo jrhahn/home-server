@@ -42,6 +42,10 @@ in
       type = types.str;
       default = "photos.home.arpa";
     };
+    paperlessDomain = mkOption {
+      type = types.str;
+      default = "paperless.home.arpa";
+    };
 
     enablePublicTls = mkOption {
       type = types.bool;
@@ -104,6 +108,35 @@ in
           Each PATH is bind-mounted from <mountPoint>/<basename PATH>, so
           /srv/immich-originals lives at <mountPoint>/immich-originals on the
           external disk. Databases are deliberately left off this list.
+        '';
+      };
+    };
+
+    paperless = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Enable Paperless-ngx (OCR document management) with its data under
+          /srv/paperless and a local PostgreSQL database. Requires an admin
+          password at passwordFile.
+        '';
+      };
+      passwordFile = mkOption {
+        type = types.str;
+        default = "/var/lib/secrets/paperless-admin-password";
+        description = ''
+          File containing the Paperless admin user's password (plain text, one
+          line). Kept on the server, not in the Nix store.
+        '';
+      };
+      ocrLanguage = mkOption {
+        type = types.str;
+        default = "eng";
+        example = "deu+eng";
+        description = ''
+          Tesseract OCR language(s); the matching language packs are installed
+          automatically. Combine with '+', most-used first.
         '';
       };
     };

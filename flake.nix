@@ -27,6 +27,7 @@
           ./modules/home-assistant.nix
           ./modules/immich.nix
           ./modules/maintenance.nix
+          ./modules/paperless.nix
           ./modules/reverse-proxy.nix
           ./modules/seafile.nix
           ./modules/storage.nix

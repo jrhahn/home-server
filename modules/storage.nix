@@ -1,4 +1,4 @@
-{ server, ... }:
+{ lib, server, ... }:
 
 {
   systemd.tmpfiles.rules = [
@@ -37,5 +37,6 @@
     server.gitDomain
     server.homeAssistantDomain
     server.photosDomain
-  ];
+  ]
+  ++ lib.optional server.paperless.enable server.paperlessDomain;
 }
