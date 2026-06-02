@@ -66,12 +66,12 @@ search make retrieval fast.
   consume folder). When `server.storage.externalDisk` is enabled, the bulk
   document store is eligible to live on the external disk.
 - The PostgreSQL database is created locally and stays on the internal disk.
-
-> **Not yet backed up.** As of now `/srv/paperless` is **not** included in the
-> `family-local` Borg job in [modules/maintenance.nix](../modules/maintenance.nix),
-> and the Paperless PostgreSQL database is not dumped. Do not treat Paperless as
-> the only copy of important scans until you add `/srv/paperless` to the backup
-> paths (and a Paperless DB dump). Keep originals elsewhere in the meantime.
+- **Backups:** when Paperless is enabled, `/srv/paperless` is included in the
+  `family-local` Borg job (and the Hetzner copy, if configured), and the
+  Paperless PostgreSQL database is dumped to `/srv/backups/database-dumps`
+  before each run — see [modules/maintenance.nix](../modules/maintenance.nix).
+  The dump and the path are gated on `server.paperless.enable`, so they cost
+  nothing when Paperless is off.
 
 ## Troubleshooting
 

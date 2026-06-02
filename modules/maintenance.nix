@@ -19,7 +19,8 @@ let
     "/srv/seafile"
     "/srv/seafile-mysql"
     "/srv/seafile-redis"
-  ];
+  ]
+  ++ lib.optionals server.paperless.enable [ "/srv/paperless" ];
   haPaths = [ "/srv/home-assistant" ];
   hetznerCommon = {
     compression = "zstd,6";
@@ -43,7 +44,7 @@ in
 lib.mkMerge [
 {
   systemd.services.dump-family-service-databases = {
-    description = "Dump Seafile and Immich databases";
+    description = "Dump Seafile, Immich, and (when enabled) Paperless databases";
     startAt = "03:15";
     serviceConfig = {
       Type = "oneshot";
@@ -69,7 +70,10 @@ lib.mkMerge [
 
       ${pkgs.util-linux}/bin/runuser -u immich -- \
         ${config.services.postgresql.package}/bin/pg_dump immich > "$out/immich.sql"
-
+${lib.optionalString server.paperless.enable ''
+      ${pkgs.util-linux}/bin/runuser -u paperless -- \
+        ${config.services.postgresql.package}/bin/pg_dump paperless > "$out/paperless.sql"
+''}
       ${pkgs.findutils}/bin/find /srv/backups/database-dumps -mindepth 1 -maxdepth 1 -type d -mtime +14 -exec ${pkgs.coreutils}/bin/rm -rf {} +
     '';
   };
