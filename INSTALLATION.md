@@ -202,11 +202,8 @@ nameserver for the `home.arpa` domain. Keep MagicDNS enabled.
 
 ![Tailscale split DNS settings for home.arpa](docs/assets/tailscale-split-dns.svg)
 
-After this, phones and laptops connected to Tailscale can use:
-
-- Seafile: `http://cloud.home.arpa`
-- Home Assistant: `http://ha.home.arpa`
-- Immich: `http://photos.home.arpa`
+After this, phones and laptops connected to Tailscale can resolve the local
+service names (the URLs are listed under step 13).
 
 ## 13. Check Services
 

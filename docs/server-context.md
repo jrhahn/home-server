@@ -95,21 +95,11 @@ fsync-heavy databases and anything whose corruption breaks a service.
 
 ## Home Assistant Migration
 
-The Pi Home Assistant config has been copied locally into `.ha-import/`.
-
-Safe, reviewable config is tracked under:
-
-- `home-assistant/config`
-
-Private migration state remains ignored:
-
-- `.storage/`
-- `secrets.yaml`
-- `zigbee.db`
-- recorder databases and logs
-
-Use `scripts/import-home-assistant-config.sh` on the target server to install
-the tracked config and overlay the private migration state when present.
+The Pi config is split into safe, tracked config (`home-assistant/config`) and
+private migration state kept out of git. See
+[home-assistant/README.md](../home-assistant/README.md) for the full
+tracked/ignored split and the `scripts/import-home-assistant-config.sh`
+workflow.
 
 ## Adding New Services
 

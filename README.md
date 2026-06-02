@@ -13,6 +13,7 @@ This setup uses NixOS services and a small Podman-based Seafile stack for:
 - Forgejo
 - Home Assistant
 - Immich
+- Paperless-ngx (opt-in)
 - PostgreSQL, MariaDB, and Redis dependencies
 - nginx reverse proxy
 - database dumps and local Borg backups
@@ -41,43 +42,14 @@ reference only. Do not deploy it directly; deploy your private flake.
 
 ## First Install
 
-1. Install NixOS 25.11 on the server.
-2. Create your private config from the template (a directory or its own repo):
+[INSTALLATION.md](INSTALLATION.md) is the full walkthrough: install NixOS,
+create your private config from the [example/](example) template, generate
+secrets, run the first `nixos-rebuild switch`, and initialize backups.
 
-   ```bash
-   mkdir ~/home-server-private && cd ~/home-server-private
-   cp /path/to/home-server/example/flake.nix .
-   cp /path/to/home-server/example/local.nix .
-   sudo nixos-generate-config --show-hardware-config > hardware-configuration.nix
-   ```
-
-3. Edit `flake.nix` to point `home-server.url` at this repo, then edit
-   `local.nix` and set at least:
-
-   - `server.tailscaleAddress`
-   - `server.adminSshKeys`
-   - `server.backups.hetzner` (if using a Storage Box)
-   - any domain / `enablePublicTls` overrides (defaults are `*.home.arpa`,
-     private-only)
-
-4. Create Seafile secrets (script lives in this repo; run it from a checkout on
-   the server):
-
-   ```bash
-   ./scripts/create-seafile-secrets.sh
-   ```
-
-5. Build and switch from your **private** flake:
-
-   ```bash
-   sudo nixos-rebuild switch --flake ~/home-server-private#family-server
-   ```
-
-6. Initialize the local Borg repo once:
-
-   ```bash
-   sudo borg init --encryption=none /srv/backups/borg-local
-   ```
+The key values to set in your private `local.nix` are `server.tailscaleAddress`,
+`server.adminSshKeys`, optional domain / `enablePublicTls` overrides (defaults
+are `*.home.arpa`, private-only), and `server.backups.hetzner` if you use a
+Storage Box.
 
 ## Services
 
@@ -88,6 +60,9 @@ Default local hostnames:
 - Forgejo: `http://git.home.arpa`
 - Home Assistant: `http://ha.home.arpa`
 - Immich: `http://photos.home.arpa`
+- Paperless-ngx (opt-in, `server.paperless.enable`): `http://paperless.home.arpa`
+
+Forgejo Actions is opt-in via `server.forgejo.actions.enable`.
 
 Getting started:
 
