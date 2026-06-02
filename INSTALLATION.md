@@ -224,3 +224,5 @@ Service guides:
 
 - [Seafile getting started](docs/seafile-getting-started.md)
 - [Immich getting started](docs/immich-getting-started.md)
+- [Forgejo getting started](docs/forgejo-getting-started.md)
+- [Paperless-ngx getting started](docs/paperless-getting-started.md)

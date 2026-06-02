@@ -68,6 +68,8 @@ Getting started:
 
 - [Seafile guide](docs/seafile-getting-started.md)
 - [Immich guide](docs/immich-getting-started.md)
+- [Forgejo guide](docs/forgejo-getting-started.md)
+- [Paperless-ngx guide](docs/paperless-getting-started.md)
 
 Forgejo registration is disabled. After the first switch, create the initial
 admin account on the server:
