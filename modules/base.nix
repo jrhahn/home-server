@@ -35,6 +35,7 @@
   environment.systemPackages = with pkgs; [
     borgbackup
     btop
+    codex
     dua
     duf
     fd
