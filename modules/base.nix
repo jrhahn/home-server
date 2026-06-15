@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, pkgsUnstable, ... }:
 
 {
   nix.settings.experimental-features = [
@@ -37,7 +37,7 @@
   environment.systemPackages = with pkgs; [
     borgbackup
     btop
-    codex
+    pkgsUnstable.codex
     dua
     duf
     fd

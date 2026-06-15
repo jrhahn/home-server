@@ -3,13 +3,15 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
   outputs =
-    { self, nixpkgs, ... }:
+    { self, nixpkgs, nixpkgs-unstable, ... }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
+      pkgsUnstable = nixpkgs-unstable.legacyPackages.${system};
     in
     {
       # The shareable part. Import this from your own private flake and add a
@@ -17,6 +19,9 @@
       # hardware-configuration.nix. See ./example for a template.
       nixosModules.default = {
         imports = [
+          {
+            _module.args.pkgsUnstable = pkgsUnstable;
+          }
           ./modules/options.nix
           ./modules/system.nix
           ./modules/adguard-home.nix
