@@ -44,6 +44,7 @@
     curl
     dig
     file
+    gh
     git
     helix
     htop
@@ -57,6 +58,7 @@
     openssl
     pciutils
     psmisc
+    python3
     ripgrep
     rsync
     smartmontools
