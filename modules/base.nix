@@ -55,6 +55,8 @@
     lsof
     ncdu
     nix-output-monitor
+    pkgsUnstable.corepack
+    pkgsUnstable.nodejs
     openssl
     pciutils
     psmisc
