@@ -1,5 +1,15 @@
 { pkgs, pkgsUnstable, ... }:
 
+let
+  cvTexLive = pkgs.texlive.combine {
+    inherit (pkgs.texlive)
+      scheme-small
+      moderncv
+      fontawesome5
+      enumitem
+      tools;
+  };
+in
 {
   nix.settings.experimental-features = [
     "nix-command"
@@ -38,6 +48,7 @@
     borgbackup
     btop
     pkgsUnstable.codex
+    cvTexLive
     dua
     duf
     fd
