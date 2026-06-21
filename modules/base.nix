@@ -78,6 +78,7 @@ in
     tmux
     tree
     usbutils
+    uv
     vim
     wget
   ];
