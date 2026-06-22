@@ -47,6 +47,7 @@ in
   environment.systemPackages = with pkgs; [
     borgbackup
     btop
+    pkgsUnstable.claude-code
     pkgsUnstable.codex
     cvTexLive
     dua
