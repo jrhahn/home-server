@@ -52,8 +52,10 @@ in
     cvTexLive
     dua
     duf
+    bat
     fd
     curl
+    fzf
     dig
     file
     gh
