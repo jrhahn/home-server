@@ -11,7 +11,14 @@
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
-      pkgsUnstable = nixpkgs-unstable.legacyPackages.${system};
+      # Instantiated with allowUnfree because some packages pulled from
+      # unstable (e.g. claude-code, codex) have unfree licenses. The NixOS
+      # `nixpkgs.config` option does not apply here, since this package set is
+      # created outside the NixOS module evaluation.
+      pkgsUnstable = import nixpkgs-unstable {
+        inherit system;
+        config.allowUnfree = true;
+      };
     in
     {
       # The shareable part. Import this from your own private flake and add a
