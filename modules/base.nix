@@ -44,6 +44,11 @@ in
 
   programs.direnv.enable = true;
 
+  programs.nix-ld = {
+    enable = true;
+    libraries = with pkgs; [ stdenv.cc.cc.lib ];
+  };
+
   environment.systemPackages = with pkgs; [
     borgbackup
     btop
