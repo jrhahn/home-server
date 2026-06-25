@@ -22,6 +22,7 @@ let
   ]
   ++ lib.optionals server.paperless.enable [ "/srv/paperless" ];
   haPaths = [ "/srv/home-assistant" ];
+  familyExclude = lib.optionals server.paperless.enable [ "pp:/srv/paperless/log" ];
   hetznerCommon = {
     compression = "zstd,6";
     encryption = {
@@ -85,6 +86,7 @@ ${lib.optionalString server.paperless.enable ''
       startAt = "04:00";
       compression = "zstd,6";
       encryption.mode = "none";
+      exclude = familyExclude;
       prune.keep = {
         daily = 7;
         weekly = 4;
@@ -119,6 +121,7 @@ ${lib.optionalString server.paperless.enable ''
       paths = familyPaths;
       repo = hetznerRepo "family";
       startAt = "04:30";
+      exclude = familyExclude;
       preHook = ''
         ${pkgs.systemd}/bin/systemctl start dump-family-service-databases.service
       '';
