@@ -47,6 +47,9 @@ in
   environment.systemPackages = with pkgs; [
     borgbackup
     btop
+    cmake
+    gcc
+    stdenv.cc.cc.lib
     pkgsUnstable.claude-code
     pkgsUnstable.codex
     cvTexLive
