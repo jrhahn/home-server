@@ -9,6 +9,13 @@ let
       enumitem
       tools;
   };
+
+  # graphifyy isn't in nixpkgs and pulls ~28 tree-sitter grammar wheels that
+  # aren't packaged either, so we expose its `graphify` CLI through a uv-managed
+  # isolated environment instead of a full Python derivation.
+  graphify = pkgs.writeShellScriptBin "graphify" ''
+    exec ${pkgs.uv}/bin/uv tool run --from graphifyy graphify "$@"
+  '';
 in
 {
   nix.settings.experimental-features = [
@@ -46,7 +53,7 @@ in
 
   programs.nix-ld = {
     enable = true;
-    libraries = with pkgs; [ stdenv.cc.cc.lib ];
+    libraries = with pkgs; [ stdenv.cc.cc.lib zlib ];
   };
 
   environment.systemPackages = with pkgs; [
@@ -68,6 +75,7 @@ in
     file
     gh
     git
+    graphify
     helix
     htop
     iftop
@@ -81,6 +89,8 @@ in
     pkgsUnstable.nodejs
     openssl
     pciutils
+    poppler_utils
+    zlib
     psmisc
     python3
     ripgrep
