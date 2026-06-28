@@ -89,7 +89,7 @@ in
     pkgsUnstable.nodejs
     openssl
     pciutils
-    poppler_utils
+    poppler-utils
     zlib
     psmisc
     python3
