@@ -31,6 +31,18 @@ in
   services.tailscale = {
     enable = true;
     openFirewall = true;
+    # Tailscale SSH: reach this host via `tailscale ssh admin@family-server`,
+    # authenticated by your tailnet identity instead of ~/.ssh/authorized_keys.
+    # This is the break-glass path that survives a wiped authorized_keys (cf. the
+    # 2026-06-29 lockout). Applied idempotently via `tailscale set --ssh` on each
+    # activation (works on an already-running node; extraUpFlags would not, since
+    # there is no authKeyFile).
+    #
+    # REQUIRES a matching `ssh` rule in the tailnet ACL (admin console) — without
+    # it, Tailscale SSH *denies* tailnet connections to port 22. Add the ACL rule
+    # FIRST, then deploy; LAN SSH (192.168.x) and the console stay available
+    # either way. Regular key-based sshd over the LAN is unaffected.
+    extraSetFlags = [ "--ssh" ];
   };
 
   services.openssh = {
