@@ -36,9 +36,11 @@ improvements with `nix flake update`. A ready-to-copy template lives in
 [example/](example). Actual secrets (private keys, passphrases, DB passwords)
 never live in either repo; they stay in `/var/lib/secrets` on the server.
 
-The `nixosConfigurations.family-server` defined in this repo is built from the
+The `nixosConfigurations.example` defined in this repo is built from the
 placeholder values in [example/](example) — it is for `nix flake check` and as a
-reference only. Do not deploy it directly; deploy your private flake.
+reference only. It is named `example` (not `family-server`) and refuses to
+activate, so it cannot be accidentally deployed onto the real host. Do not
+deploy it directly; deploy your private flake.
 
 ## First Install
 

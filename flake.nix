@@ -46,15 +46,22 @@
         ];
       };
 
-      # Example instance, built from placeholder values in ./example. Useful for
-      # `nix flake check` and as the canonical reference for a private flake. Do
-      # NOT deploy this directly; deploy your own private flake instead.
-      nixosConfigurations.family-server = nixpkgs.lib.nixosSystem {
+      # Reference instance, built from placeholder values in ./example. Useful
+      # for `nix flake check` and as the canonical reference for a private flake.
+      # Do NOT deploy this directly; deploy your own private flake instead.
+      #
+      # Deliberately named `example` (not `family-server`): so a stray
+      # `nixos-rebuild switch --flake .#family-server` in this repo errors out
+      # instead of silently deploying placeholder SSH keys onto the real host.
+      # It is also tagged `isReferenceInstance`, which makes activation abort
+      # outright (see modules/system.nix) as a second line of defence.
+      nixosConfigurations.example = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
           self.nixosModules.default
           ./example/local.nix
           ./example/hardware-configuration.nix
+          { server.isReferenceInstance = true; }
         ];
       };
 

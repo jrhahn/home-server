@@ -67,5 +67,21 @@ in
 
   security.sudo.wheelNeedsPassword = true;
 
+  # Hard stop: refuse to activate the placeholder reference instance. This runs
+  # before the `users` activation script (deps = [ ]), so it aborts the switch
+  # *before* the example's placeholder adminSshKeys can overwrite authorized_keys
+  # and lock you out. Build/`nix flake check` are unaffected (activation scripts
+  # do not run at build time).
+  system.activationScripts.refuseReferenceInstance = lib.mkIf cfg.isReferenceInstance {
+    deps = [ ];
+    text = ''
+      echo "FATAL: server.isReferenceInstance = true — this is the placeholder" >&2
+      echo "reference config (nixosConfigurations.example), not a real deployment." >&2
+      echo "It carries placeholder SSH keys and would lock you out. Refusing to" >&2
+      echo "activate. Deploy your private flake (e.g. ~/home-server-private#family-server)." >&2
+      exit 1
+    '';
+  };
+
   system.stateVersion = "25.11";
 }
