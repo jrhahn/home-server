@@ -6,6 +6,17 @@ let
 in
 {
   options.server = {
+    isReferenceInstance = mkOption {
+      type = types.bool;
+      default = false;
+      description = ''
+        Marks the placeholder reference instance (nixosConfigurations.example).
+        When true, activation aborts immediately (see modules/system.nix) so the
+        example config — which carries placeholder SSH keys — can never be
+        switched onto a real machine. Leave false in your private config.
+      '';
+    };
+
     adminUser = mkOption {
       type = types.str;
       default = "admin";
