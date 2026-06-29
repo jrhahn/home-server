@@ -33,8 +33,13 @@ in
       "SHARE_HISTORY"
     ];
     shellAliases = {
-      ll = "ls -alF";
-      la = "ls -A";
+      # eza with Nerd Font icons; the glyphs are rendered by the SSH client's
+      # terminal font (e.g. the laptop's foot + Symbols Nerd Font), so nothing
+      # font-related is needed on this headless server. --icons=auto only emits
+      # icons to a TTY.
+      ls = "eza --group-directories-first --icons=auto";
+      ll = "eza -lah --group-directories-first --icons=auto";
+      la = "eza -lAh --group-directories-first --icons=auto";
       gs = "git status";
     };
     ohMyZsh = {

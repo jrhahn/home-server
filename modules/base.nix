@@ -67,6 +67,7 @@ in
     cvTexLive
     dua
     duf
+    eza
     bat
     fd
     curl
