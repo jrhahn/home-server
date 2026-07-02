@@ -152,6 +152,33 @@ in
       };
     };
 
+    printServer = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Run a CUPS print server for the USB-attached Brother TD-2020 label
+          printer, shared to the LAN and tailnet and advertised over mDNS. Pulls
+          in Brother's proprietary (unfree) TD-2020 driver.
+        '';
+      };
+      printerName = mkOption {
+        type = types.str;
+        default = "TD-2020";
+        description = "CUPS queue name for the label printer.";
+      };
+      deviceUri = mkOption {
+        type = types.str;
+        default = "usb://Brother/TD-2020";
+        example = "usb://Brother/TD-2020?serial=000J2G377396";
+        description = ''
+          CUPS device URI for the printer. The serial-suffixed form is the most
+          reliable for a USB printer; find the exact value with `lpinfo -v`
+          after the server is up, and set it in your private config.
+        '';
+      };
+    };
+
     forgejo.actions = {
       enable = mkOption {
         type = types.bool;
