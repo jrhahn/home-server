@@ -177,6 +177,19 @@ in
           after the server is up, and set it in your private config.
         '';
       };
+      mediaSize = mkOption {
+        type = types.str;
+        default = "";
+        example = "51x26";
+        description = ''
+          Default label media size for the queue, as a PageSize name from the
+          driver's PPD (`lpoptions -p <queue> -l` lists them; the TD-2020 PPD
+          has e.g. 30x30, 50x30, 51x26, 60x60). The TD-2020 does not sense the
+          loaded roll, so set this to match your labels. Empty leaves the PPD
+          default. This is what the queue rasterises to, so remote clients that
+          send a plain PDF still get the right label size.
+        '';
+      };
     };
 
     forgejo.actions = {
