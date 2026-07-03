@@ -17,8 +17,7 @@ in
 {
   config = lib.mkIf cfg.enable {
     # Only the Brother filter blob is unfree; allow just that, nothing else.
-    nixpkgs.config.allowUnfreePredicate =
-      pkg: builtins.elem (lib.getName pkg) [ "brother-td2020" ];
+    nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "brother-td2020" ];
 
     services.printing = {
       enable = true;
@@ -53,6 +52,11 @@ in
           model = "brother_td2020_printer_en.ppd";
           location = config.networking.hostName;
           description = "Brother TD-2020 label printer";
+          # The printer can't sense the roll, so pin the label size as the
+          # queue default (see server.printServer.mediaSize). Left unset if empty.
+          ppdOptions = lib.optionalAttrs (cfg.mediaSize != "") {
+            PageSize = cfg.mediaSize;
+          };
         }
       ];
       ensureDefaultPrinter = cfg.printerName;
