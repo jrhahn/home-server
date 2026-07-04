@@ -7,7 +7,10 @@ let
       moderncv
       fontawesome5
       enumitem
-      tools;
+      tools
+      fira
+      lato
+      sourcesanspro;
   };
 
   # graphifyy isn't in nixpkgs and pulls ~28 tree-sitter grammar wheels that
