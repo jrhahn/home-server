@@ -10,7 +10,9 @@ let
       tools
       fira
       lato
-      sourcesanspro;
+      sourcesanspro
+      fontaxes
+      mweights;
   };
 
   # graphifyy isn't in nixpkgs and pulls ~28 tree-sitter grammar wheels that
