@@ -39,6 +39,7 @@
           ./modules/home-assistant.nix
           ./modules/immich.nix
           ./modules/maintenance.nix
+          ./modules/mosquitto.nix
           ./modules/paperless.nix
           ./modules/print-server.nix
           ./modules/reverse-proxy.nix
