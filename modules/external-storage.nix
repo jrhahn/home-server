@@ -32,6 +32,10 @@ lib.mkIf cfg.enable {
       name = path;
       value = {
         device = bindSource path;
+        # "none" is the conventional fsType for bind mounts. It is also required
+        # since 26.05: the zfs module forces every fileSystems.*.fsType to be
+        # evaluated, so an unset fsType now aborts evaluation.
+        fsType = "none";
         options = bindOptions;
       };
     }) cfg.datasets

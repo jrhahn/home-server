@@ -2,7 +2,7 @@
   description = "Private NixOS configuration for my family server";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
     # Point this at the shareable repo. Pick whichever fits:
     #   url = "github:YOURNAME/home-server";                              # public/shared
