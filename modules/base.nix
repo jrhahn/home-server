@@ -73,6 +73,12 @@ in
     libraries = with pkgs; [ stdenv.cc.cc.lib zlib ];
   };
 
+  # Install terminfo entries for all known terminals so SSH sessions from any
+  # client work regardless of $TERM. Without this, connecting from e.g. Kitty
+  # (TERM=xterm-kitty) has no matching terminfo, which breaks zsh line editing
+  # (duplicated/garbled input) and prints "can't find terminal definition".
+  environment.enableAllTerminfo = true;
+
   environment.systemPackages = with pkgs; [
     borgbackup
     btop
