@@ -22,7 +22,14 @@ let
   ]
   ++ lib.optionals server.paperless.enable [ "/srv/paperless" ];
   haPaths = [ "/srv/home-assistant" ];
-  familyExclude = lib.optionals server.paperless.enable [ "pp:/srv/paperless/log" ];
+  familyExclude = [
+    # Seafile's Redis rewrites its append-only file while borg reads it, which
+    # borg reports as a warning and the module turns into a failed job. The AOF
+    # is only Redis' job queue/cache; the authoritative state is in the
+    # MariaDB dump under /srv/backups/database-dumps.
+    "pp:/srv/seafile-redis/appendonlydir"
+  ]
+  ++ lib.optionals server.paperless.enable [ "pp:/srv/paperless/log" ];
   hetznerCommon = {
     compression = "zstd,6";
     encryption = {
