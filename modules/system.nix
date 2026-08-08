@@ -42,9 +42,28 @@ in
       la = "eza -lAh --group-directories-first --icons=auto";
       gs = "git status";
     };
+    # promptInit is emitted after interactiveShellInit, which is where the
+    # oh-my-zsh module sources oh-my-zsh.sh and loads the theme -- so this is
+    # the one hook guaranteed to run once powerlevel10k is actually defined.
+    # oh-my-zsh sets promptInit to "" with mkDefault, so overriding it here is
+    # not a conflict.
+    #
+    # p10k.zsh is `p10k configure` output, copied verbatim from the laptop
+    # config repo (that is where a wizard can realistically be run; this host
+    # is headless). Hand-tuned deltas live in p10k-overrides.zsh so refreshing
+    # the generated file cannot silently drop them.
+    promptInit = ''
+      source ${./p10k/p10k.zsh}
+      source ${./p10k/p10k-overrides.zsh}
+    '';
     ohMyZsh = {
       enable = true;
-      theme = "bira";
+      # customPkgs links each package's share/zsh/themes into $ZSH_CUSTOM, so
+      # zsh-powerlevel10k lands at themes/powerlevel10k/ -- hence the two-part
+      # theme name. The powerline glyphs are rendered by the SSH client's
+      # terminal font, so this headless host needs no fonts of its own.
+      theme = "powerlevel10k/powerlevel10k";
+      customPkgs = [ pkgs.zsh-powerlevel10k ];
       plugins = [
         "colored-man-pages"
         "docker"
