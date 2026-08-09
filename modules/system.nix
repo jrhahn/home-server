@@ -24,6 +24,12 @@ in
   programs.zsh = {
     enable = true;
     enableCompletion = true;
+    # oh-my-zsh runs compinit itself, and compinit's security check (compaudit)
+    # walks every fpath entry -- mostly Nix store paths, so the list is long.
+    # Running it a second time from /etc/zshrc roughly doubles that work for
+    # nothing. enableCompletion stays on: it only controls nix-zsh-completions
+    # and pathsToLink, not this call.
+    enableGlobalCompInit = false;
     histSize = 10000;
     autosuggestions.enable = true;
     syntaxHighlighting.enable = true;
