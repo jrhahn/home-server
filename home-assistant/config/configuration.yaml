@@ -9,6 +9,3 @@ frontend:
 automation: !include automations.yaml
 script: !include scripts.yaml
 scene: !include scenes.yaml
-
-# rs-bird-scale (Meisenknödel-Waage) sensors + calibration entities.
-mqtt: !include birdscale.yaml
