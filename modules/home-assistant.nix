@@ -17,6 +17,14 @@
         ];
       };
 
+      # State history + its storage backend. This install does not pull in
+      # `default_config` (which would bundle these), so enable them explicitly;
+      # without them the dashboard's history-graph reports "history integration
+      # disabled". recorder defaults to a local SQLite db under the (persistent)
+      # config dir and records all entities.
+      recorder = { };
+      history = { };
+
       # rs-bird-scale (Meisenknödel feeder scale) MQTT entities. The firmware
       # publishes ready-to-use grams to `birds/scale/state` and °C to
       # `birds/scale/temperature`, and reads retained calibration/tuning back
