@@ -153,6 +153,101 @@
         ];
       };
     };
+
+    # Main dashboard, defined in nix so it is versioned and appears
+    # automatically after a rebuild (this replaces the auto-generated
+    # storage dashboard). Two tabs:
+    #  - "Meisenknödel": the feeder scale (landing view, so weight + temperature
+    #    are the first thing the app shows).
+    #  - "Zuhause": the classic auto layout (original-states strategy, grouped by
+    #    area) so the general overview is preserved and keeps updating itself.
+    #
+    # Entity IDs are HA's name-slugs (ö -> o). If a card shows "entity not
+    # found", check the real id in Developer Tools -> States (filter
+    # "meisenkn") and adjust here.
+    lovelaceConfig = {
+      title = "Zuhause";
+      views = [
+        {
+          title = "Meisenknödel";
+          path = "meisenknoedel";
+          icon = "mdi:bird";
+          cards = [
+            {
+              type = "glance";
+              title = "Meisenknödel-Waage";
+              state_color = true;
+              columns = 2;
+              entities = [
+                {
+                  entity = "sensor.meisenknodel_gewicht";
+                  name = "Gewicht";
+                }
+                {
+                  entity = "sensor.meisenknodel_temperatur";
+                  name = "Temperatur";
+                }
+              ];
+            }
+            {
+              type = "gauge";
+              entity = "sensor.meisenknodel_temperatur";
+              name = "Temperatur";
+              unit = "°C";
+              min = -10;
+              max = 40;
+              severity = {
+                green = 0;
+                yellow = 25;
+                red = 32;
+              };
+            }
+            {
+              type = "history-graph";
+              title = "Verlauf (24 h)";
+              hours_to_show = 24;
+              entities = [
+                { entity = "sensor.meisenknodel_gewicht"; }
+                { entity = "sensor.meisenknodel_temperatur"; }
+              ];
+            }
+            {
+              type = "entities";
+              title = "Kalibrierung & Tuning";
+              show_header_toggle = false;
+              entities = [
+                { entity = "number.meisenknodel_kalibrierfaktor"; }
+                { entity = "number.meisenknodel_tara_offset"; }
+                { entity = "number.meisenknodel_ausloseschwelle"; }
+                {
+                  type = "button";
+                  name = "Tarieren (Waage leer!)";
+                  icon = "mdi:scale-balance";
+                  action_name = "Ausführen";
+                  tap_action = {
+                    action = "call-service";
+                    service = "script.birdscale_tare";
+                  };
+                }
+                { type = "divider"; }
+                { entity = "number.meisenknodel_idle_intervall"; }
+                { entity = "number.meisenknodel_aktiv_intervall"; }
+                { entity = "number.meisenknodel_heartbeat_intervall"; }
+                { entity = "switch.meisenknodel_deep_sleep"; }
+              ];
+            }
+          ];
+        }
+        {
+          title = "Zuhause";
+          path = "zuhause";
+          icon = "mdi:home";
+          strategy = {
+            type = "original-states";
+          };
+        }
+      ];
+    };
     configWritable = true;
     openFirewall = false;
 
