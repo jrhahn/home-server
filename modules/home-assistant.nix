@@ -164,15 +164,17 @@
 
     # Main dashboard, defined in nix so it is versioned and appears
     # automatically after a rebuild (this replaces the auto-generated
-    # storage dashboard). Two tabs:
+    # storage dashboard). Three tabs:
     #  - "Meisenknödel": the feeder scale (landing view, so weight + temperature
     #    are the first thing the app shows).
+    #  - "Klima": the rs-smarthome-nodes sensor fleet, one card group per room.
     #  - "Zuhause": the classic auto layout (original-states strategy, grouped by
     #    area) so the general overview is preserved and keeps updating itself.
     #
-    # Entity IDs are HA's name-slugs (ö -> o). If a card shows "entity not
-    # found", check the real id in Developer Tools -> States (filter
-    # "meisenkn") and adjust here.
+    # Entity IDs are HA's name-slugs (ö -> o), and for the MQTT-discovered nodes
+    # they are "<device> <entity>" slugged together -- device "Bad" + entity
+    # "Temperatur" -> sensor.bad_temperatur. If a card shows "entity not found",
+    # check the real id in Developer Tools -> States and adjust here.
     lovelaceConfig = {
       title = "Zuhause";
       views = [
@@ -242,6 +244,63 @@
                 { entity = "number.meisenknodel_aktiv_intervall"; }
                 { entity = "number.meisenknodel_heartbeat_intervall"; }
                 { entity = "switch.meisenknodel_deep_sleep"; }
+              ];
+            }
+          ];
+        }
+        {
+          # The rs-smarthome-nodes sensor fleet. Unlike the Meisenknödel
+          # entities above, these are *not* declared anywhere in nix: each node
+          # publishes MQTT discovery configs and Home Assistant creates the
+          # device itself. Only this dashboard view is hand-written, because
+          # discovery says what an entity *is*, not where it should be shown.
+          #
+          # One card group per node; the others follow as they are built
+          # (Schlafzimmer/Wohnzimmer = SCD41 CO₂, Küche = SDS011 Feinstaub,
+          # Draußen = the feeder scale's SHT31-D).
+          title = "Klima";
+          path = "klima";
+          icon = "mdi:home-thermometer";
+          cards = [
+            {
+              type = "glance";
+              title = "Bad";
+              state_color = true;
+              columns = 2;
+              entities = [
+                {
+                  entity = "sensor.bad_temperatur";
+                  name = "Temperatur";
+                }
+                {
+                  entity = "sensor.bad_feuchte";
+                  name = "Feuchte";
+                }
+              ];
+            }
+            {
+              # The point of this node: the Bad has no window, so relative
+              # humidity is the mould early-warning. Above ~60 % sustained is
+              # worth acting on, above ~70 % is trouble.
+              type = "gauge";
+              entity = "sensor.bad_feuchte";
+              name = "Feuchte Bad";
+              unit = "%";
+              min = 0;
+              max = 100;
+              severity = {
+                green = 0;
+                yellow = 60;
+                red = 70;
+              };
+            }
+            {
+              type = "history-graph";
+              title = "Bad — Verlauf (24 h)";
+              hours_to_show = 24;
+              entities = [
+                { entity = "sensor.bad_temperatur"; }
+                { entity = "sensor.bad_feuchte"; }
               ];
             }
           ];
