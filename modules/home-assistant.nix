@@ -256,8 +256,8 @@
           # discovery says what an entity *is*, not where it should be shown.
           #
           # One card group per node; the others follow as they are built
-          # (Schlafzimmer/Wohnzimmer = SCD41 CO₂, Küche = SDS011 Feinstaub,
-          # Draußen = the feeder scale's SHT31-D).
+          # (Wohnzimmer = SCD41 CO₂, Küche = SDS011 Feinstaub, Draußen = the
+          # feeder scale's SHT31-D).
           title = "Klima";
           path = "klima";
           icon = "mdi:home-thermometer";
@@ -301,6 +301,58 @@
               entities = [
                 { entity = "sensor.bad_temperatur"; }
                 { entity = "sensor.bad_feuchte"; }
+              ];
+            }
+            {
+              type = "glance";
+              title = "Schlafzimmer";
+              state_color = true;
+              columns = 3;
+              entities = [
+                {
+                  entity = "sensor.schlafzimmer_co2";
+                  name = "CO₂";
+                }
+                {
+                  entity = "sensor.schlafzimmer_temperatur";
+                  name = "Temperatur";
+                }
+                {
+                  entity = "sensor.schlafzimmer_feuchte";
+                  name = "Feuchte";
+                }
+              ];
+            }
+            {
+              # Bedroom CO₂ as a ventilation cue. ~400 ppm is outdoor air (and
+              # also the SCD41's self-calibration floor, so a fresh sensor reads
+              # it whether or not the air is actually fresh); 1000 ppm is the
+              # usual comfort limit, and a closed bedroom passes it overnight.
+              type = "gauge";
+              entity = "sensor.schlafzimmer_co2";
+              name = "CO₂ Schlafzimmer";
+              unit = "ppm";
+              min = 400;
+              max = 2000;
+              severity = {
+                green = 400;
+                yellow = 800;
+                red = 1400;
+              };
+            }
+            {
+              # The overnight rise is the point: a flat line means the room is
+              # ventilated, a curve climbing until you open the window is the
+              # signal this node was built for. Temperature reads warm -- the
+              # SCD41's T/RH sensor compensates its own CO₂ measurement and
+              # self-heats, so trust the trend rather than the absolute value.
+              type = "history-graph";
+              title = "Schlafzimmer — Verlauf (24 h)";
+              hours_to_show = 24;
+              entities = [
+                { entity = "sensor.schlafzimmer_co2"; }
+                { entity = "sensor.schlafzimmer_temperatur"; }
+                { entity = "sensor.schlafzimmer_feuchte"; }
               ];
             }
           ];
