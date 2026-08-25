@@ -21,6 +21,21 @@
     };
   };
 
+  # The library lives under /srv, which server.storage.externalDisk may relocate
+  # onto the external disk with nofail. Without this the services start against
+  # the empty bind-mount targets whenever that disk is missing and build a
+  # second, divergent library on the internal disk — silently, since nothing
+  # errors. Requiring the mounts turns that into a clean refusal to start.
+  # Where the paths are not separate mounts the dependency resolves to -.mount
+  # and costs nothing, so this is safe with externalDisk disabled.
+  systemd.services.immich-server.unitConfig.RequiresMountsFor = [
+    "/srv/immich"
+    "/srv/immich-originals"
+  ];
+  systemd.services.immich-machine-learning.unitConfig.RequiresMountsFor = [
+    "/srv/immich"
+  ];
+
   services.redis.servers.immich.logLevel = "warning";
 
   hardware.graphics.enable = true;
