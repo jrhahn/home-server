@@ -13,20 +13,20 @@ Use small, observable upgrades for stateful services.
    `nixpkgs` and the `home-server` input):
 
    ```bash
-   cd ~/home-server-private
+   cd <your-private-config>
    nix flake update
    ```
 
 3. Build before switching:
 
    ```bash
-   sudo nixos-rebuild build --flake ~/home-server-private#family-server
+   sudo nixos-rebuild build --flake <your-private-config>#family-server
    ```
 
 4. Switch:
 
    ```bash
-   sudo nixos-rebuild switch --flake ~/home-server-private#family-server
+   sudo nixos-rebuild switch --flake <your-private-config>#family-server
    ```
 
 5. Check services:

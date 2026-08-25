@@ -103,7 +103,7 @@ in
       echo "FATAL: server.isReferenceInstance = true — this is the placeholder" >&2
       echo "reference config (nixosConfigurations.example), not a real deployment." >&2
       echo "It carries placeholder SSH keys and would lock you out. Refusing to" >&2
-      echo "activate. Deploy your private flake (e.g. ~/home-server-private#family-server)." >&2
+      echo "activate. Deploy your private flake (e.g. ~/repositories/home-server-private#family-server)." >&2
       exit 1
     '';
   };
