@@ -31,6 +31,23 @@ lib.mkIf cfg.enable {
     };
   };
 
+  # dataDir sits under /srv, which server.storage.externalDisk may relocate onto
+  # the external disk with nofail. Without this the workers start against an
+  # empty bind-mount target whenever that disk is missing and file documents on
+  # the internal disk instead — silently, since nothing errors. See the same
+  # guard in immich.nix; on a non-mount path it resolves to -.mount and is free.
+  systemd.services =
+    lib.genAttrs
+      [
+        "paperless-web"
+        "paperless-consumer"
+        "paperless-scheduler"
+        "paperless-task-queue"
+      ]
+      (_: {
+        unitConfig.RequiresMountsFor = [ "/srv/paperless" ];
+      });
+
   services.nginx.virtualHosts.${server.paperlessDomain} = {
     enableACME = server.enablePublicTls;
     forceSSL = server.enablePublicTls;
