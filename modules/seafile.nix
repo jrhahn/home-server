@@ -77,14 +77,24 @@
     };
   };
 
+  # Each container's volume source must be mounted before Podman touches it.
+  # /srv/seafile may be relocated onto the external disk by
+  # server.storage.externalDisk with nofail; if that disk is missing, Podman
+  # bind-mounts an empty directory into the container and Seafile initialises a
+  # fresh, divergent library on the internal disk rather than failing. The two
+  # database directories are internal today, but declaring them keeps the guard
+  # correct if they are ever relocated too. On a non-mount path the dependency
+  # resolves to -.mount and costs nothing.
   systemd.services.podman-seafile-mysql = {
     after = [ "podman-network-seafile.service" ];
     requires = [ "podman-network-seafile.service" ];
+    unitConfig.RequiresMountsFor = [ "/srv/seafile-mysql" ];
   };
 
   systemd.services.podman-seafile-redis = {
     after = [ "podman-network-seafile.service" ];
     requires = [ "podman-network-seafile.service" ];
+    unitConfig.RequiresMountsFor = [ "/srv/seafile-redis" ];
   };
 
   systemd.services.podman-seafile = {
@@ -94,6 +104,7 @@
       "podman-seafile-redis.service"
     ];
     requires = [ "podman-network-seafile.service" ];
+    unitConfig.RequiresMountsFor = [ "/srv/seafile" ];
   };
 
   services.nginx.virtualHosts.${server.cloudDomain} = {
