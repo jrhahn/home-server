@@ -54,14 +54,14 @@ It is **off by default**. To enable it:
 2. Apply the config so Forgejo exposes Actions and the runner service exists:
 
    ```bash
-   sudo nixos-rebuild switch --flake ~/home-server-private#family-server
+   sudo nixos-rebuild switch --flake <your-private-config>#family-server
    ```
 
 3. Generate a runner registration token and write it to the file the runner
    expects (`/var/lib/secrets/forgejo-runner-token`):
 
    ```bash
-   ~/home-server/scripts/create-forgejo-runner-token.sh
+   <home-server-checkout>/scripts/create-forgejo-runner-token.sh
    ```
 
 4. Restart the runner so it registers (or rebuild again):
