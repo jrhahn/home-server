@@ -34,7 +34,7 @@ Keep Tailscale connected on phones and laptops before opening Paperless.
 3. Apply the config:
 
    ```bash
-   sudo nixos-rebuild switch --flake ~/home-server-private#family-server
+   sudo nixos-rebuild switch --flake <your-private-config>#family-server
    ```
 
 ## First Login

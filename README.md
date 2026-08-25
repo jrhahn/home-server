@@ -92,7 +92,7 @@ After installing NixOS on the new server, import it into the service config dir,
 pointing `HA_IMPORT_DIR` at the snapshot in your private checkout:
 
 ```bash
-HA_IMPORT_DIR=~/home-server-private/ha-import/homeassistant \
+HA_IMPORT_DIR=<your-private-config>/ha-import/homeassistant \
   ./scripts/import-home-assistant-config.sh
 ```
 

@@ -47,7 +47,7 @@ sudo borg-job-home-assistant-hetzner <borg-subcommand>
 Apply the NixOS configuration first so the job wrappers exist:
 
 ```bash
-sudo nixos-rebuild switch --flake ~/home-server-private#family-server
+sudo nixos-rebuild switch --flake <your-private-config>#family-server
 ```
 
 The jobs default to `doInit = true`, so each remote repository is created
