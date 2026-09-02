@@ -14,6 +14,7 @@ This setup uses NixOS services and a small Podman-based Seafile stack for:
 - Home Assistant
 - Immich
 - Paperless-ngx (opt-in)
+- Terminus / TRMNL e-paper server (opt-in)
 - PostgreSQL, MariaDB, and Redis dependencies
 - nginx reverse proxy
 - database dumps and local Borg backups
@@ -63,6 +64,7 @@ Default local hostnames:
 - Home Assistant: `http://ha.home.arpa`
 - Immich: `http://photos.home.arpa`
 - Paperless-ngx (opt-in, `server.paperless.enable`): `http://paperless.home.arpa`
+- Terminus / TRMNL (opt-in, `server.trmnl.enable`): `http://trmnl.home.arpa`
 
 Forgejo Actions is opt-in via `server.forgejo.actions.enable`.
 
@@ -73,6 +75,7 @@ Getting started:
 - [Google Photos -> Immich migration](docs/immich-google-photos-migration.md)
 - [Forgejo guide](docs/forgejo-getting-started.md)
 - [Paperless-ngx guide](docs/paperless-getting-started.md)
+- [TRMNL / Terminus guide](docs/trmnl-getting-started.md)
 
 Forgejo registration is disabled. After the first switch, create the initial
 admin account on the server:
@@ -126,6 +129,8 @@ Local Borg backups are configured in [modules/maintenance.nix](modules/maintenan
   `/srv/seafile`,
   `/srv/seafile-mysql`,
   `/srv/seafile-redis`, `/srv/immich`, and `/srv/immich-originals` at 04:00.
+  When Terminus is enabled it also dumps its PostgreSQL database and backs up
+  `/srv/trmnl` (minus the live database directory).
   Forgejo also writes its own dump under `/srv/forgejo/dump` at 03:30.
 
 Initialize the local repo once:

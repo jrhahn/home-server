@@ -45,6 +45,7 @@
           ./modules/reverse-proxy.nix
           ./modules/seafile.nix
           ./modules/storage.nix
+          ./modules/trmnl.nix
         ];
       };
 
