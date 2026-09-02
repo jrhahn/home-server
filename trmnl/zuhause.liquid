@@ -1,0 +1,171 @@
+{%- comment -%} source_1 = Open-Meteo, source_2 = Home Assistant /api/states {%- endcomment -%}
+{%- assign cur = source_1.current -%}
+{%- assign day = source_1.daily -%}
+{%- assign hr = source_1.hourly -%}
+
+{%- comment -%} Wetter-Icons einmal definieren, viewBox-skaliert {%- endcomment -%}
+{%- capture i_sun -%}<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2" fill="#AAAAAA"/><path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/></svg>{%- endcapture -%}
+{%- capture i_part -%}<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round"><circle cx="8.5" cy="8" r="3.2" fill="#AAAAAA"/><path d="M8.5 1.6v1.8M2.1 8h1.8M4 3.5l1.3 1.3M13 3.5l-1.3 1.3"/><path d="M7.5 20h9.8a3.4 3.4 0 0 0 .3-6.8 5 5 0 0 0-9.6-1 3.9 3.9 0 0 0-.5 7.8z" fill="#AAAAAA"/></svg>{%- endcapture -%}
+{%- capture i_cloud -%}<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round"><path d="M6.8 19h10.4a3.6 3.6 0 0 0 .3-7.2 5.3 5.3 0 0 0-10.2-1.1A3.9 3.9 0 0 0 6.8 19z" fill="#AAAAAA"/></svg>{%- endcapture -%}
+{%- capture i_rain1 -%}<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round"><path d="M6.8 15h10.4a3.6 3.6 0 0 0 .3-7.2 5.3 5.3 0 0 0-10.2-1.1A3.9 3.9 0 0 0 6.8 15z" fill="#AAAAAA"/><path d="M12 18l-1 3.2" stroke="#555555" stroke-width="2"/></svg>{%- endcapture -%}
+{%- capture i_rain2 -%}<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round"><path d="M6.8 15h10.4a3.6 3.6 0 0 0 .3-7.2 5.3 5.3 0 0 0-10.2-1.1A3.9 3.9 0 0 0 6.8 15z" fill="#AAAAAA"/><path d="M9.5 18l-1 3.2M14.5 18l-1 3.2" stroke="#555555" stroke-width="2"/></svg>{%- endcapture -%}
+{%- capture i_rain3 -%}<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round"><path d="M6.8 15h10.4a3.6 3.6 0 0 0 .3-7.2 5.3 5.3 0 0 0-10.2-1.1A3.9 3.9 0 0 0 6.8 15z" fill="#AAAAAA"/><path d="M7.5 18l-1 3.2M12 18l-1 3.2M16.5 18l-1 3.2" stroke="#555555" stroke-width="2"/></svg>{%- endcapture -%}
+{%- capture i_snow -%}<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round"><path d="M6.8 15h10.4a3.6 3.6 0 0 0 .3-7.2 5.3 5.3 0 0 0-10.2-1.1A3.9 3.9 0 0 0 6.8 15z" fill="#AAAAAA"/><path d="M8 19.5h1.6M8.8 18.7v1.6M13 19.5h1.6M13.8 18.7v1.6M18 19.5h-1.6M17.2 18.7v1.6" stroke="#555555" stroke-width="1.9"/></svg>{%- endcapture -%}
+{%- capture i_storm -%}<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.8 14h10.4a3.6 3.6 0 0 0 .3-7.2 5.3 5.3 0 0 0-10.2-1.1A3.9 3.9 0 0 0 6.8 14z" fill="#AAAAAA"/><path d="M13 16l-3 4h3l-1.5 3.5" stroke="#000000" stroke-width="2"/></svg>{%- endcapture -%}
+{%- capture i_fog -%}<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M3 9h18M4 17h16" stroke="#000000"/><path d="M5 13h14M7 21h10" stroke="#555555"/></svg>{%- endcapture -%}
+{%- capture i_moon -%}<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.3 8.3 0 0 1 9.5 4a8.3 8.3 0 1 0 10.5 10.5z" fill="#AAAAAA"/></svg>{%- endcapture -%}
+{%- capture i_moonc -%}<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#000000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 9.2A5.6 5.6 0 0 1 8 2.8a5.6 5.6 0 1 0 6.5 6.4z" fill="#AAAAAA"/><path d="M7.5 20h9.8a3.4 3.4 0 0 0 .3-6.8 5 5 0 0 0-9.6-1 3.9 3.9 0 0 0-.5 7.8z" fill="#AAAAAA"/></svg>{%- endcapture -%}
+
+{%- assign wc = cur.weather_code -%}
+{%- capture icon_now -%}
+{%- assign cp = cur.precipitation -%}
+{%- assign rn = i_rain1 -%}
+{%- if cp >= 0.5 -%}{%- assign rn = i_rain2 -%}{%- endif -%}
+{%- if cp >= 2 -%}{%- assign rn = i_rain3 -%}{%- endif -%}
+{%- assign dnow = cur.is_day -%}
+{%- case wc -%}
+  {%- when 0, 1 -%}{% if dnow == 0 %}{{ i_moon }}{% else %}{{ i_sun }}{% endif %}
+  {%- when 2 -%}{% if dnow == 0 %}{{ i_moonc }}{% else %}{{ i_part }}{% endif %}
+  {%- when 45, 48 -%}{{ i_fog }}
+  {%- when 71, 73, 75, 77, 85, 86 -%}{{ i_snow }}
+  {%- when 95, 96, 99 -%}{{ i_storm }}
+  {%- when 3 -%}{{ i_cloud }}
+  {%- else -%}{{ rn }}
+{%- endcase -%}
+{%- endcapture -%}
+
+<div style="display:flex;flex-direction:row;justify-content:space-between;align-items:center;width:100%">
+  <div style="display:flex;flex-direction:row;align-items:center;gap:14px">
+    <span style="display:inline-block;width:78px;height:78px;flex:none">{{ icon_now }}</span>
+    <span style="display:flex;flex-direction:column">
+      <span class="value value--large">{{ cur.temperature_2m | round }}<span style="color:#555555">&deg;</span></span>
+      <span class="label label--small">
+        {%- case wc -%}
+        {%- when 0 -%}klar{%- when 1 -%}überwiegend klar{%- when 2 -%}wechselnd bewölkt
+        {%- when 3 -%}bedeckt{%- when 45, 48 -%}Nebel
+        {%- when 51, 53, 55, 56, 57 -%}Niesel{%- when 61, 63, 65, 66, 67 -%}Regen
+        {%- when 71, 73, 75, 77 -%}Schnee{%- when 80, 81, 82 -%}Schauer
+        {%- when 85, 86 -%}Schneeschauer{%- when 95, 96, 99 -%}Gewitter
+        {%- else -%}&mdash;{%- endcase %} &middot; {{ cur.relative_humidity_2m }}&nbsp;% rF
+      </span>
+      <span class="label label--small">Darmstadt {{ day.temperature_2m_min[0] | round }}&deg;&ndash;{{ day.temperature_2m_max[0] | round }}&deg; &middot; auf {{ day.sunrise[0] | date: "%H:%M" }} &middot; unter {{ day.sunset[0] | date: "%H:%M" }}</span>
+    </span>
+  </div>
+  <span style="display:flex;flex-direction:row;align-items:flex-start;gap:12px">
+    {%- for i in (1..5) -%}
+      {%- assign dc2 = day.weather_code[i] -%}
+      <span style="display:flex;flex-direction:column;align-items:center;width:70px">
+        <span class="label label--small">
+          {%- assign wd = day.time[i] | date: "%w" -%}
+          {%- case wd -%}
+            {%- when "0" -%}So{%- when "1" -%}Mo{%- when "2" -%}Di{%- when "3" -%}Mi
+            {%- when "4" -%}Do{%- when "5" -%}Fr{%- else -%}Sa
+          {%- endcase -%}
+        </span>
+        {%- assign dsum = day.precipitation_sum[i] -%}
+      {%- assign rn = i_rain1 -%}
+      {%- if dsum >= 1 -%}{%- assign rn = i_rain2 -%}{%- endif -%}
+      {%- if dsum >= 5 -%}{%- assign rn = i_rain3 -%}{%- endif -%}
+      <span style="display:inline-block;width:32px;height:32px">
+          {%- case dc2 -%}
+            {%- when 0, 1 -%}{{ i_sun }}
+            {%- when 2 -%}{{ i_part }}
+            {%- when 45, 48 -%}{{ i_fog }}
+            {%- when 71, 73, 75, 77, 85, 86 -%}{{ i_snow }}
+            {%- when 95, 96, 99 -%}{{ i_storm }}
+            {%- when 3 -%}{{ i_cloud }}
+            {%- else -%}{{ rn }}
+          {%- endcase -%}
+        </span>
+        <span class="value value--small">{{ day.temperature_2m_max[i] | round }}<span style="color:#555555">&deg;</span></span>
+        <span class="label label--small" style="color:#555555">{{ day.temperature_2m_min[i] | round }}&deg;</span>
+        {%- if dsum > 0 -%}<span style="color:#555555;font-size:12px;line-height:1.3;white-space:nowrap">{{ dsum }}&nbsp;mm</span>{%- endif -%}
+      </span>
+    {%- endfor -%}
+  </span>
+</div>
+
+<div style="display:flex;flex-direction:row;justify-content:space-between;width:100%;margin-top:20px">
+  {%- for i in (1..8) -%}
+    {%- assign t = hr.time[i] -%}
+    {%- if t -%}
+    {%- assign c = hr.weather_code[i] -%}
+    {%- assign p = hr.precipitation_probability[i] -%}
+    <span style="display:flex;flex-direction:column;align-items:center;flex:1">
+      <span class="label label--small">{{ t | date: "%H" }}</span>
+      <span style="display:inline-block;width:30px;height:30px">
+        {%- assign hm = hr.precipitation[i] -%}
+        {%- assign rn = i_rain1 -%}
+        {%- if hm >= 0.5 -%}{%- assign rn = i_rain2 -%}{%- endif -%}
+        {%- if hm >= 2 -%}{%- assign rn = i_rain3 -%}{%- endif -%}
+        {%- assign dh = hr.is_day[i] -%}
+        {%- case c -%}
+          {%- when 0, 1 -%}{% if dh == 0 %}{{ i_moon }}{% else %}{{ i_sun }}{% endif %}
+          {%- when 2 -%}{% if dh == 0 %}{{ i_moonc }}{% else %}{{ i_part }}{% endif %}
+          {%- when 45, 48 -%}{{ i_fog }}
+          {%- when 71, 73, 75, 77, 85, 86 -%}{{ i_snow }}
+          {%- when 95, 96, 99 -%}{{ i_storm }}
+          {%- when 3 -%}{{ i_cloud }}
+          {%- else -%}{{ rn }}
+        {%- endcase -%}
+      </span>
+      <span class="value value--small">{{ hr.temperature_2m[i] | round }}<span style="color:#555555">&deg;</span></span>
+      {%- assign mm = hr.precipitation[i] -%}
+      {%- if mm > 0 -%}
+        <span class="label label--small" style="color:#555555;white-space:nowrap">{{ mm }}&nbsp;mm</span>
+      {%- elsif p > 0 -%}
+        <span class="label label--small" style="color:#AAAAAA">{{ p }}&nbsp;%</span>
+      {%- else -%}
+        <span class="label label--small" style="color:#AAAAAA">&middot;</span>
+      {%- endif -%}
+    </span>
+    {%- endif -%}
+  {%- endfor -%}
+</div>
+
+{%- assign acc = "" -%}
+{%- for s in source_2 -%}
+  {%- assign dc = s.attributes.device_class -%}
+  {%- if dc == "temperature" or dc == "humidity" or dc == "carbon_dioxide" -%}
+    {%- assign acc = acc | append: s.attributes.friendly_name | split: " " | first | append: "|" -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- assign rooms = acc | split: "|" | uniq | sort -%}
+
+<span class="label label--underline" style="width:100%;margin-top:20px">Räume</span>
+<div style="display:flex;flex-direction:row;justify-content:space-between;gap:14px;width:100%;margin-top:8px">
+  {%- for room in rooms -%}
+    {%- assign rt = "" -%}{%- assign rh = "" -%}{%- assign rc = "" -%}{%- assign tw = 99 -%}
+    {%- for s in source_2 -%}
+      {%- assign fn = s.attributes.friendly_name -%}
+      {%- if fn -%}
+        {%- assign r = fn | split: " " | first -%}
+        {%- if r == room -%}
+          {%- assign st = s.state -%}
+          {%- if st != "unavailable" and st != "unknown" and st != "none" -%}
+            {%- assign dc = s.attributes.device_class -%}
+            {%- assign nw = fn | split: " " | size -%}
+            {%- if dc == "temperature" and nw < tw -%}{%- assign rt = st -%}{%- assign tw = nw -%}{%- endif -%}
+            {%- if dc == "humidity" and rh == "" -%}{%- assign rh = st -%}{%- endif -%}
+            {%- if dc == "carbon_dioxide" and rc == "" -%}{%- assign rc = st -%}{%- endif -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endif -%}
+    {%- endfor -%}
+    <span style="display:flex;flex-direction:column;flex:1;align-items:flex-start">
+      <span class="label">{{ room }}</span>
+      <span class="value value--base">{% if rt != "" %}{{ rt | round: 1 }}<span style="color:#555555">&deg;</span>{% else %}<span style="color:#555555">&mdash;</span>{% endif %}</span>
+      <span class="value value--small">{% if rh != "" %}{{ rh | round }}<span style="color:#555555">&nbsp;% rF</span>{% elsif rt == "" %}<span style="color:#555555">offline</span>{% else %}&nbsp;{% endif %}</span>
+      <span class="value value--small">{% if rc != "" %}{{ rc | round }}<span style="color:#555555">&nbsp;ppm</span>{% else %}&nbsp;{% endif %}</span>
+      {%- if rc != "" -%}
+        {%- assign rcn = rc | times: 1 -%}
+        {%- assign cw = rcn | times: 100.0 | divided_by: 2000.0 -%}
+        {%- if cw > 100 -%}{%- assign cw = 100 -%}{%- endif -%}
+        <span style="display:block;position:relative;width:88%;height:11px;background:#AAAAAA;margin-top:4px">
+          <span style="position:absolute;left:0;top:0;height:11px;width:{{ cw }}%;background:{% if rcn > 1000 %}#000000{% else %}#555555{% endif %}"></span>
+          <span style="position:absolute;left:50%;top:-3px;width:2px;height:17px;background:#000000"></span>
+        </span>
+      {%- endif -%}
+    </span>
+  {%- endfor -%}
+</div>
