@@ -57,6 +57,10 @@ in
       type = types.str;
       default = "paperless.home.arpa";
     };
+    trmnlDomain = mkOption {
+      type = types.str;
+      default = "trmnl.home.arpa";
+    };
 
     enablePublicTls = mkOption {
       type = types.bool;
@@ -148,6 +152,72 @@ in
         description = ''
           Tesseract OCR language(s); the matching language packs are installed
           automatically. Combine with '+', most-used first.
+        '';
+      };
+    };
+
+    trmnl = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Run Terminus, the self-hosted TRMNL server (BYOS), as a Podman stack
+          with its own PostgreSQL and Valkey under /srv/trmnl. E-paper devices
+          are pointed at it instead of trmnl.app by entering apiUri as the
+          custom server URL in the device's WiFi captive portal. Requires
+          secrets at secretsFile (see scripts/create-trmnl-secrets.sh).
+        '';
+      };
+      apiUri = mkOption {
+        type = types.str;
+        default = "";
+        example = "http://192.168.1.10:2300";
+        description = ''
+          Base URL the *device* uses to reach Terminus, including the port.
+          Terminus builds the image URLs it hands out from this value, so it
+          must be reachable from the LAN: a TRMNL device is not on the tailnet
+          and cannot resolve or route the tailscaleAddress the other services
+          use. A plain LAN IP is the reliable choice; a hostname only works if
+          the device's DHCP-provided DNS resolves it to the LAN address.
+          Changing it later means re-running the device's captive portal.
+        '';
+      };
+      listenAddress = mkOption {
+        type = types.str;
+        default = "0.0.0.0";
+        description = ''
+          Host address the Terminus web container publishes on. Defaults to all
+          interfaces because the device has to reach it directly; narrow it to
+          the LAN IP if the machine has interfaces that should not serve it.
+          The nginx vhost on trmnlDomain always proxies via loopback.
+        '';
+      };
+      openFirewall = mkOption {
+        type = types.bool;
+        default = true;
+        description = ''
+          Open TCP 2300 so devices on the LAN can reach Terminus. Without it the
+          device cannot fetch its screen, so this defaults on; turn it off only
+          if you front Terminus with something else that is already reachable.
+        '';
+      };
+      imageTag = mkOption {
+        type = types.str;
+        default = "latest";
+        example = "1.0.0";
+        description = ''
+          Tag of ghcr.io/usetrmnl/terminus to run. Pin this before an upgrade
+          you care about: the container applies database migrations on start,
+          and a NixOS rollback does not undo them.
+        '';
+      };
+      secretsFile = mkOption {
+        type = types.str;
+        default = "/var/lib/secrets/trmnl.env";
+        description = ''
+          systemd EnvironmentFile holding APP_SECRET, POSTGRES_PASSWORD,
+          DATABASE_URL, and KEYVALUE_URL. Kept on the server, not in the Nix
+          store; generate it with scripts/create-trmnl-secrets.sh.
         '';
       };
     };
@@ -300,6 +370,10 @@ in
       {
         assertion = !cfg.storage.externalDisk.enable || cfg.storage.externalDisk.device != "";
         message = "server.storage.externalDisk.enable requires server.storage.externalDisk.device (set it in your private config, e.g. /dev/disk/by-uuid/...).";
+      }
+      {
+        assertion = !cfg.trmnl.enable || cfg.trmnl.apiUri != "";
+        message = "server.trmnl.enable requires server.trmnl.apiUri (the LAN URL the device connects to, e.g. http://192.168.1.10:2300).";
       }
       {
         assertion =
