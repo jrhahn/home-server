@@ -20,7 +20,8 @@ let
     "/srv/seafile-mysql"
     "/srv/seafile-redis"
   ]
-  ++ lib.optionals server.paperless.enable [ "/srv/paperless" ];
+  ++ lib.optionals server.paperless.enable [ "/srv/paperless" ]
+  ++ lib.optionals server.trmnl.enable [ "/srv/trmnl" ];
   haPaths = [ "/srv/home-assistant" ];
   familyExclude = [
     # Seafile's Redis rewrites its append-only file while borg reads it, which
@@ -29,7 +30,10 @@ let
     # MariaDB dump under /srv/backups/database-dumps.
     "pp:/srv/seafile-redis/appendonlydir"
   ]
-  ++ lib.optionals server.paperless.enable [ "pp:/srv/paperless/log" ];
+  ++ lib.optionals server.paperless.enable [ "pp:/srv/paperless/log" ]
+  # Terminus' PostgreSQL writes here continuously; the consistent copy is the
+  # dump under /srv/backups/database-dumps, so the raw cluster is skipped.
+  ++ lib.optionals server.trmnl.enable [ "pp:/srv/trmnl/database" ];
   hetznerCommon = {
     compression = "zstd,6";
     encryption = {
@@ -52,7 +56,7 @@ in
 lib.mkMerge [
 {
   systemd.services.dump-family-service-databases = {
-    description = "Dump Seafile, Immich, and (when enabled) Paperless databases";
+    description = "Dump Seafile, Immich, and (when enabled) Paperless and Terminus databases";
     startAt = "03:15";
     serviceConfig = {
       Type = "oneshot";
@@ -76,6 +80,12 @@ lib.mkMerge [
           --databases ccnet_db seafile_db seahub_db > "$out/seafile.sql"
       fi
 
+${lib.optionalString server.trmnl.enable ''
+      if ${pkgs.podman}/bin/podman ps --format '{{.Names}}' | ${pkgs.gnugrep}/bin/grep -qx trmnl-database; then
+        ${pkgs.podman}/bin/podman exec trmnl-database \
+          pg_dump --username=terminus terminus > "$out/terminus.sql"
+      fi
+''}
       ${pkgs.util-linux}/bin/runuser -u immich -- \
         ${config.services.postgresql.package}/bin/pg_dump immich > "$out/immich.sql"
 ${lib.optionalString server.paperless.enable ''

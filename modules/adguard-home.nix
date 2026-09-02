@@ -1,4 +1,9 @@
-{ config, server, ... }:
+{
+  config,
+  lib,
+  server,
+  ...
+}:
 
 {
   services.adguardhome = {
@@ -48,7 +53,13 @@
             domain = server.photosDomain;
             answer = server.tailscaleAddress;
           }
-        ];
+        ]
+        # Admin UI only. The e-paper device is not on the tailnet and reaches
+        # Terminus over the LAN via server.trmnl.apiUri instead.
+        ++ lib.optional server.trmnl.enable {
+          domain = server.trmnlDomain;
+          answer = server.tailscaleAddress;
+        };
       };
     };
   };
