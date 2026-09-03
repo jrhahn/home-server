@@ -132,7 +132,42 @@
 {%- endfor -%}
 {%- assign rooms = acc | split: "|" | uniq | sort -%}
 
-<span class="label label--underline" style="width:100%;margin-top:20px">Räume</span>
+{%- comment -%} Gerätestatus; nur belegt, wenn die Extension auf das Gerät zeigt {%- endcomment -%}
+{%- assign bat = extension.device.battery_percentage -%}
+{%- assign wifi = extension.device.wifi_percentage -%}
+
+<span class="label label--underline" style="justify-content:space-between;width:100%;margin-top:20px">
+  <span>Räume</span>
+  {%- if bat or wifi -%}
+  {%- comment -%} Ganzzahlige Rechtecke: kein Antialiasing, also keine Zwischentöne {%- endcomment -%}
+  {%- assign bfill = bat | times: 16 | divided_by: 100 -%}
+  <span style="display:flex;flex-direction:row;align-items:center;gap:16px;font-size:15px;line-height:1">
+    <span style="display:flex;flex-direction:row;align-items:center;gap:6px">
+      <span style="display:inline-block;width:26px;height:14px;flex:none">
+        <svg viewBox="0 0 26 14" width="26" height="14">
+          <rect x="0" y="0" width="22" height="14" fill="#000000"/>
+          <rect x="2" y="2" width="18" height="10" fill="#FFFFFF"/>
+          <rect x="22" y="4" width="4" height="6" fill="#000000"/>
+          {%- if bfill > 0 -%}<rect x="3" y="3" width="{{ bfill }}" height="8" fill="{% if bat <= 20 %}#000000{% else %}#555555{% endif %}"/>{%- endif -%}
+        </svg>
+      </span>
+      {%- if bat > 0 -%}<span>{{ bat }}<span style="color:#555555">&nbsp;%</span></span>
+      {%- else -%}<span style="color:#555555">&mdash;</span>{%- endif -%}
+    </span>
+    <span style="display:flex;flex-direction:row;align-items:center;gap:6px">
+      <span style="display:inline-block;width:16px;height:14px;flex:none">
+        <svg viewBox="0 0 16 14" width="16" height="14">
+          <rect x="0" y="9" width="4" height="5" fill="{% if wifi >= 20 %}#000000{% else %}#AAAAAA{% endif %}"/>
+          <rect x="6" y="5" width="4" height="9" fill="{% if wifi >= 40 %}#000000{% else %}#AAAAAA{% endif %}"/>
+          <rect x="12" y="1" width="4" height="13" fill="{% if wifi >= 60 %}#000000{% else %}#AAAAAA{% endif %}"/>
+        </svg>
+      </span>
+      {%- if wifi > 0 -%}<span>{{ wifi }}<span style="color:#555555">&nbsp;%</span></span>
+      {%- else -%}<span style="color:#555555">&mdash;</span>{%- endif -%}
+    </span>
+  </span>
+  {%- endif -%}
+</span>
 <div style="display:flex;flex-direction:row;justify-content:space-between;gap:14px;width:100%;margin-top:8px">
   {%- for room in rooms -%}
     {%- assign rt = "" -%}{%- assign rh = "" -%}{%- assign rc = "" -%}{%- assign tw = 99 -%}

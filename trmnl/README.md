@@ -12,6 +12,21 @@ sensors onto the 7.5" panel. Create the extension in the Terminus UI
 | Name  | `zuhause` |
 | Kind  | `Poll` |
 | Template | contents of [zuhause.liquid](zuhause.liquid), pasted **between** the skeleton's `<div class="layout layout--col">` and its closing tag |
+| Devices | the panel |
+
+Selecting the **device** rather than only its model is what makes the battery
+and WiFi readings appear. Terminus puts the device into the Liquid context only
+when it renders for a device ID, and the batch job hands one over only if the
+extension has devices attached: `extension.devices.any?` picks between a job
+per device and a job per model (`app/jobs/batches/extension.rb`). With models
+alone, `extension.device` is an empty hash and the status block renders nothing.
+
+Switching an existing extension over does not leave a second screen behind. The
+mold builder resolves the model from the device
+(`app/aspects/screens/mold_builder.rb`, falling back to `device.model_id` in
+`Models::Finder`) and the upsert keys on the screen name plus that model ID, so
+the same screen record is updated, the playlist entry keeps working, and
+`extension.css_classes` still carries the model's classes.
 
 ## Exchanges
 
@@ -66,7 +81,10 @@ They carry meaning rather than decoration:
 * in the five-day header the daily high is black and the low gray;
 * a dead sensor prints `offline` in gray rather than vanishing;
 * the CO2 bar fills `#555555` below 1000 ppm and black above, with a tick at the
-  threshold — the one value here with an actionable limit.
+  threshold — the one value here with an actionable limit;
+* the battery fill follows the same past-the-threshold rule, `#555555` above
+  20 % and black at or below, and the WiFi bars are black when lit and
+  `#AAAAAA` when not, so the glyph carries the reading without the number.
 
 ## Rain is graded, not just flagged
 
@@ -145,3 +163,78 @@ Where a room has several temperatures, the one with the shortest friendly name
 wins, so `Schlafzimmer Temperatur` beats `Schlafzimmer SCD41 Temperatur`.
 Sensors reading `unavailable`/`unknown` are shown as `offline` rather than
 hidden, so a dead sensor is visible instead of silently missing.
+
+## Battery and WiFi
+
+The panel's own state is the one thing on this screen that no exchange fetches.
+Terminus puts the device into the Liquid context itself, and the device struct
+exposes exactly three keys (`app/structs/device.rb`, `liquid_attributes`):
+
+    extension.device.id
+    extension.device.battery_percentage
+    extension.device.wifi_percentage
+
+Both percentages arrive precomputed. The raw voltage, the RSSI in dBm and the
+`charging` flag are all stored on the device row but never reach a template, so
+a screen cannot show volts even though the device reports them.
+
+The values are as of the device's last check-in, not of the render: the device
+sends `Battery-Voltage` and `RSSI` as headers on every `/api/display` request
+and `Devices::Synchronizer` writes them to its row. At a 30 minute refresh rate
+a reading can be that old, which is fine for both quantities but explains a
+number that looks stale right after a reboot.
+
+`battery_percentage` has two sources. Firmware that sends a `Percent-Charged`
+header wins outright. Otherwise Terminus derives the percentage from the
+voltage in ten steps of 0.45 V — a plain 0 to 4.5 V ramp, not a discharge
+curve:
+
+| voltage | reads as |
+| --- | --- |
+| >= 4.06 V | 100 % |
+| 3.61-4.05 V | 90 % |
+| 3.16-3.60 V | 80 % |
+| 2.71-3.15 V | 70 % |
+
+A LiPo lives between roughly 3.3 V and 4.2 V, so on that fallback the panel
+only ever shows 80, 90 or 100 %, and a cell too flat to boot would still read
+70 %. Which of the two is in play is visible on the panel: a multiple of ten is
+the estimate, anything else is the firmware's own reading.
+
+`wifi_percentage` maps RSSI onto ten steps as well. The three bars group those
+into the distinctions worth acting on — three bars from 60 % (RSSI >= -61 dBm),
+two from 40 % (>= -70), one from 20 % (>= -90), none below that.
+
+A reading of `0` means the column still holds its default and nothing has been
+reported yet; a device at a true 0 % is not making requests. Both are drawn as
+an em dash beside an unlit glyph rather than as `0 %`. The block as a whole
+disappears when `extension.device` is empty, which is what a screen rendered
+for a model instead of a device gets.
+
+Both glyphs are axis-aligned rectangles on an integer grid at their final size
+(26x14 and 16x14), unlike the weather icons, which are curves scaled by their
+wrapper. At 14 px a stroked outline or a WiFi arc lands on half pixels, and the
+antialiasing that follows is exactly what the 2-bit quantizer turns into
+speckle. The battery fill sits one pixel inside the shell, which is not
+cosmetic: without that gutter a black low-charge fill merges with the black
+border and 20 % reads as an empty battery.
+
+## Checking a change without the panel
+
+A screen is just a page, so a change can be seen before it reaches the device:
+render the template with any Liquid implementation, wrap the output in the
+model's classes and CSS variables (both come from `https://trmnl.com/api/models`
+under `og_plus`), point a headless Chromium at it with `--window-size=800,480`,
+and remap the screenshot onto the four levels.
+
+```bash
+magick xc:'#000000' xc:'#555555' xc:'#AAAAAA' xc:'#FFFFFF' +append pal4.png
+magick shot.png -colorspace Gray -dither None -remap pal4.png quantized.png
+```
+
+`magick identify` reporting `4c` then confirms nothing dithered.
+
+One difference to watch for if the renderer is not Ruby's: Ruby's `split` drops
+a trailing empty field, so the `acc | split: "|"` that derives the room list
+yields one entry fewer there than in most other implementations — which shows
+up as a nameless extra room column locally that the panel never has.
