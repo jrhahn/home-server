@@ -1,0 +1,94 @@
+{%- comment -%} source_1 = RainViewer https://api.rainviewer.com/public/weather-maps.json
+
+Geometry is baked in because the location never moves. Web Mercator at zoom 6
+is 1576 m/px at Darmstadt's latitude, so a 254 px window spans exactly 400 km
+so Darmstadt sits 200 km from its left and right edge. Global pixel origin of the
+window is x0 = 8459, y0 = 5416, which is why tile 33/21 sits at -11/-40 and its
+neighbours 256 px further on. Recompute all of it with the snippet in
+README.md if the house ever moves.
+{%- endcomment -%}
+{%- assign host = source_1.host -%}
+{%- assign past = source_1.radar.past -%}
+{%- assign i0 = past.size | minus: 1 -%}
+{%- assign i1 = i0 | minus: 6 -%}
+{%- assign i2 = i0 | minus: 12 -%}
+{%- comment -%} A negative index counts from the end in Liquid and would quietly
+repeat the newest frame, so clamp rather than let it wrap {%- endcomment -%}
+{%- if i1 < 0 -%}{%- assign i1 = 0 -%}{%- endif -%}
+{%- if i2 < 0 -%}{%- assign i2 = 0 -%}{%- endif -%}
+{%- comment -%} Both sides of the subtraction come from the same clock, so the
+container's timezone cancels out and the age is right even under UTC {%- endcomment -%}
+{%- assign now_s = 'now' | date: '%s' | times: 1 -%}
+{%- assign age = now_s | minus: past[i0].time | divided_by: 60 -%}
+{%- comment -%} Oldest frame first: left to right is the direction the rain moves {%- endcomment -%}
+{%- capture paths -%}{{ past[i2].path }}|{{ past[i1].path }}|{{ past[i0].path }}{%- endcapture -%}
+{%- assign frames = paths | split: "|" -%}
+{%- assign labels = "vor 2 h|vor 1 h|jetzt" | split: "|" -%}
+
+<span class="label label--underline" style="justify-content:space-between;width:100%">
+  <span>Regenradar</span>
+  <span style="font-size:15px;line-height:1;font-weight:400">Darmstadt &middot; 200&nbsp;km<span style="color:#555555"> &middot; Bild vor {{ age }}&nbsp;Min.</span></span>
+</span>
+
+<div style="display:flex;flex-direction:row;justify-content:space-between;width:100%;margin-top:10px">
+  {%- for p in frames -%}
+  <span style="display:flex;flex-direction:column;align-items:center">
+    <span class="label label--small" style="margin-bottom:4px;{% if forloop.last %}color:#000000{% else %}color:#555555{% endif %}">{{ labels[forloop.index0] }}</span>
+    <span style="position:relative;display:block;width:254px;height:300px;overflow:hidden;background:#FFFFFF">
+      {%- comment -%} 2x2 tiles, clipped by the window; grayscale() only drops the
+      hue, any added contrast() measurably erases faint echoes {%- endcomment -%}
+      <img src="{{ host }}{{ p }}/256/6/33/21/0/1_1.png" alt="" width="256" height="256" style="position:absolute;left:-11px;top:-40px;width:256px;height:256px;filter:grayscale(1)">
+      <img src="{{ host }}{{ p }}/256/6/33/22/0/1_1.png" alt="" width="256" height="256" style="position:absolute;left:-11px;top:216px;width:256px;height:256px;filter:grayscale(1)">
+      <img src="{{ host }}{{ p }}/256/6/34/21/0/1_1.png" alt="" width="256" height="256" style="position:absolute;left:245px;top:-40px;width:256px;height:256px;filter:grayscale(1)">
+      <img src="{{ host }}{{ p }}/256/6/34/22/0/1_1.png" alt="" width="256" height="256" style="position:absolute;left:245px;top:216px;width:256px;height:256px;filter:grayscale(1)">
+
+      {%- comment -%} Orientation layer. Integer rectangles and crispEdges, so
+      nothing here hands the quantizer a half tone to dither {%- endcomment -%}
+      <svg viewBox="0 0 254 300" width="254" height="300" style="position:absolute;left:0;top:0">
+        <rect x="48" y="72" width="3" height="3" fill="#000000"/>{%- comment -%} Köln {%- endcomment -%}
+        <rect x="163" y="45" width="3" height="3" fill="#000000"/>{%- comment -%} Kassel {%- endcomment -%}
+        <rect x="34" y="157" width="3" height="3" fill="#000000"/>{%- comment -%} Trier {%- endcomment -%}
+        <rect x="185" y="154" width="3" height="3" fill="#000000"/>{%- comment -%} Würzburg {%- endcomment -%}
+        <rect x="236" y="178" width="3" height="3" fill="#000000"/>{%- comment -%} Nürnberg {%- endcomment -%}
+        <rect x="150" y="225" width="3" height="3" fill="#000000"/>{%- comment -%} Stuttgart {%- endcomment -%}
+
+        {%- comment -%} Darmstadt: crosshair plus a ring, so it stays findable inside an echo {%- endcomment -%}
+        <rect x="121" y="150" width="13" height="1" fill="#000000"/>
+        <rect x="127" y="144" width="1" height="13" fill="#000000"/>
+        <rect x="124" y="147" width="7" height="7" fill="none" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+
+        <rect x="0" y="0" width="254" height="1" fill="#AAAAAA"/>
+        <rect x="0" y="299" width="254" height="1" fill="#AAAAAA"/>
+        <rect x="0" y="0" width="1" height="300" fill="#AAAAAA"/>
+        <rect x="253" y="0" width="1" height="300" fill="#AAAAAA"/>
+
+        {%- comment -%} 63 px = 100 km, the scale the rings used to carry {%- endcomment -%}
+        <rect x="12" y="284" width="63" height="2" fill="#000000"/>
+        <rect x="12" y="279" width="1" height="7" fill="#000000"/>
+        <rect x="74" y="279" width="1" height="7" fill="#000000"/>
+      </svg>
+
+      {%- comment -%} Labels as HTML rather than SVG text: a white background chip
+      keeps them readable over an echo, and sanitize.yml grants text no paint-order {%- endcomment -%}
+      <span style="position:absolute;left:12px;top:262px;font-size:11px;line-height:1.2;background:#FFFFFF;color:#555555">100&nbsp;km</span>
+      <span style="position:absolute;left:55px;top:67px;font-size:11px;line-height:1.2;background:#FFFFFF;color:#000000">Köln</span>
+      <span style="position:absolute;left:169px;top:39px;font-size:11px;line-height:1.2;background:#FFFFFF;color:#000000">Kassel</span>
+      <span style="position:absolute;left:40px;top:151px;font-size:11px;line-height:1.2;background:#FFFFFF;color:#000000">Trier</span>
+      <span style="position:absolute;left:191px;top:148px;font-size:11px;line-height:1.2;background:#FFFFFF;color:#000000">Würzburg</span>
+      <span style="position:absolute;right:22px;top:172px;font-size:11px;line-height:1.2;background:#FFFFFF;color:#000000">Nürnberg</span>
+      <span style="position:absolute;left:156px;top:219px;font-size:11px;line-height:1.2;background:#FFFFFF;color:#000000">Stuttgart</span>
+    </span>
+  </span>
+  {%- endfor -%}
+</div>
+
+<div style="display:flex;flex-direction:row;justify-content:space-between;align-items:center;width:100%;margin-top:8px">
+  <span style="display:flex;flex-direction:row;align-items:center;gap:6px;font-size:12px;line-height:1">
+    <span style="color:#555555">Niederschlag</span>
+    <span style="display:inline-block;width:22px;height:9px;background:#AAAAAA"></span>
+    <span style="display:inline-block;width:22px;height:9px;background:#555555"></span>
+    <span style="display:inline-block;width:22px;height:9px;background:#000000"></span>
+    <span style="color:#555555">leicht &rarr; stark</span>
+  </span>
+  <span style="font-size:12px;line-height:1;color:#555555">RainViewer &middot; Zoom 6, 1,6&nbsp;km/px</span>
+</div>
