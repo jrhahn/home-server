@@ -26,13 +26,13 @@ The 800x480 splits into a full-width weather header and, below it, two columns:
 
 ```
 +--------+------------------------------------------------------+
-| [icon] |   Fr      Sa      So      Mo      Di                 |
-|        |  29° 18° 23° 14° 25° 8°  30° 12° 25° 16°             |
-|  23°   +------------------------------------------------------+
-| bedeckt| Stündlich                        nächste 8 Stunden   |
-| aus SW | 21 ↗  22 ↗  23 ↗  00 ↗  01 ↗  02 ↗  03 ↗  04 ↗       |
-| DA 15– |                                                      |
-|   26°  | 23°  22°  21°  20°  20°  20°  19°  19°               |
+| [icon] |  heute    Sa      So      Mo      Di                 |
+|        |  29° 19° 24° 14° 25° 7°  31° 12° 22° 16°             |
+| 21° wie+------------------------------------------------------+
+|  -2°   | Stündlich                        nächste 8 Stunden   |
+| bedeckt| 01 ↗  02 ↗  03 ↗  04 ↗  05 ↗  06 ↗  07 ↗  08 ↗       |
+| aus S  |                                                      |
+| PM 3/5 | 20°  20°  20°  20°  19°  19°  19°  19°               |
 | auf .. +------------------------------------------------------+
 +--------+ Radar     130 km O/W · 165 km N/S · Bild vor 8 Min.  |
 | Räume  |  vor 2 h      vor 1 h        jetzt                   |
@@ -122,7 +122,7 @@ No key, no account. Coordinates come from Home Assistant's own config
 - Verb: `GET`
 - Template (URL):
 
-      https://api.open-meteo.com/v1/forecast?latitude=49.8728&longitude=8.6512&timezone=Europe%2FBerlin&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,is_day,wind_direction_10m&forecast_hours=12&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,sunrise,sunset&forecast_days=6
+      https://api.open-meteo.com/v1/forecast?latitude=49.8728&longitude=8.6512&timezone=Europe%2FBerlin&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,is_day,wind_direction_10m&forecast_hours=12&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,sunrise,sunset&forecast_days=6
 
 - Headers: none
 
@@ -165,6 +165,19 @@ The age in the radar header is `'now' | date: '%s'` minus the frame's timestamp.
 Both sides come from the same clock, so the container's timezone cancels out —
 which matters, because Terminus runs on UTC and any absolute clock time derived
 from a Unix timestamp would be an hour or two wrong on the panel.
+
+#### 4. Open-Meteo Air Quality → `source_4`
+
+- Verb: `GET`
+- Template (URL):
+
+      https://air-quality-api.open-meteo.com/v1/air-quality?latitude=49.8728&longitude=8.6512&timezone=Europe%2FBerlin&current=pm2_5,pm10,uv_index
+
+- Headers: none
+
+A different host from the forecast API and a separate exchange, but the same
+deal: no key, no account. It also serves the European AQI and five pollen
+counts, which are not used yet.
 
 ### Rain is graded, not just flagged
 
@@ -317,6 +330,38 @@ antialiasing that follows is exactly what the 2-bit quantizer turns into
 speckle. The battery fill sits one pixel inside the shell, which is not
 cosmetic: without that gutter a black low-charge fill merges with the black
 border and 20 % reads as an empty battery.
+
+### Lines that appear only when they have something to say
+
+The screen is full, so anything new has to be quiet most of the time. Three
+readings work that way, and all three sit in the current-conditions column:
+
+* **Perceived temperature** prints as `wie -2°` beside the big number, and only
+  when it differs from the measured one by at least 3 K. Beside rather than
+  below, because there is width to spare there and no height at all. Liquid has
+  no `abs`, so it takes two comparisons — and note that Liquid evaluates `and`
+  and `or` right to left, which makes `a and b or c` mean `a and (b or c)`.
+* **UV index** appends to the outdoor-air line from 3 upwards. Below that it is
+  not a decision anyone makes.
+* **Gusts** appear from 40 km/h. Below that the mean speed says enough.
+
+**Outdoor particulates** are the exception that always prints: `außen PM 3/5`,
+PM2.5 then PM10. The point of it is the living room's own SDS011 reading a few
+centimetres away in the room grid — an indoor number without an outdoor one
+does not answer the question anybody actually has, which is whether to open a
+window.
+
+What paid for the new lines: the five-day row now starts **today** rather than
+tomorrow, which made `Darmstadt 15°–26°` in the column redundant and freed its
+14 px. The first column is labelled `heute` instead of a weekday. The
+current-conditions icon also went from 64 px to 52 — it has now given up 24 px
+across two rounds, which is the right direction of travel for decoration
+competing with data.
+
+The worst case decides the budget, not the common one: with gusts over 40 km/h
+*and* a UV index *and* a perceived-temperature gap, the column is at its tallest.
+Both states are worth rendering after a change — real data is usually the quiet
+one, and the loud one is where the layout breaks.
 
 ### Wind
 

@@ -88,9 +88,20 @@ bleibt damit intakt, ein neuer Raum erscheint weiter von selbst {%- endcomment -
   ist der Grund, dass es schmal sein darf — vorher stand alles in einer Zeile und
   die diktierte die Breite des ganzen Blocks {%- endcomment -%}
   <span style="display:flex;flex-direction:column;justify-content:space-between;width:148px;flex:none">
-    <span style="display:inline-block;width:64px;height:64px">{{ icon_now }}</span>
+    <span style="display:inline-block;width:52px;height:52px">{{ icon_now }}</span>
     <span style="display:flex;flex-direction:column">
-    <span class="value value--large">{{ cur.temperature_2m | round }}<span style="color:#555555">&deg;</span></span>
+    {%- comment -%} Gefühlte Temperatur nur bei mindestens 3 Grad Unterschied, und
+    neben die große Zahl statt in eine eigene Zeile — daneben ist Platz, darunter nicht.
+    Liquid kennt kein abs, also zwei Vergleiche {%- endcomment -%}
+    {%- assign t_real = cur.temperature_2m | round -%}
+    {%- assign t_feel = cur.apparent_temperature | round -%}
+    {%- assign t_diff = t_feel | minus: t_real -%}
+    <span style="display:flex;flex-direction:row;align-items:baseline;gap:6px">
+      <span class="value value--large">{{ t_real }}<span style="color:#555555">&deg;</span></span>
+      {%- if cur.apparent_temperature and t_diff >= 3 or t_diff <= -3 -%}
+      <span class="label label--small" style="color:#555555;white-space:nowrap">wie {{ t_feel }}&deg;</span>
+      {%- endif -%}
+    </span>
     <span class="label label--small">
       {%- case wc -%}
       {%- when 0 -%}klar{%- when 1 -%}überwiegend klar{%- when 2 -%}wechselnd bewölkt
@@ -125,7 +136,15 @@ bleibt damit intakt, ein neuer Raum erscheint weiter von selbst {%- endcomment -
     <span class="label label--small" style="color:#555555">Böen {{ cur.wind_gusts_10m | round }}&nbsp;km/h</span>
     {%- endif -%}
     {%- endif -%}
-    <span class="label label--small">Darmstadt {{ day.temperature_2m_min[0] | round }}&deg;&ndash;{{ day.temperature_2m_max[0] | round }}&deg;</span>
+    {%- comment -%} source_4 = Open-Meteo Air Quality. Feinstaub steht hier, damit der
+    Innenwert im Wohnzimmer eine Bezugsgröße hat; UV erst ab 3, darunter sagt er nichts
+    {%- endcomment -%}
+    {%- assign uv = source_4.current.uv_index -%}
+    {%- if source_4.current.pm10 -%}
+    <span class="label label--small" style="color:#555555;white-space:nowrap">außen PM {{ source_4.current.pm2_5 | round }}/{{ source_4.current.pm10 | round }}
+      {%- if uv >= 3 %} &middot; UV {{ uv | round }}{% endif -%}
+    </span>
+    {%- endif -%}
     <span class="label label--small" style="color:#555555;white-space:nowrap">auf {{ day.sunrise[0] | date: "%H:%M" }} &middot; unter {{ day.sunset[0] | date: "%H:%M" }}</span>
     </span>
   </span>
@@ -133,15 +152,19 @@ bleibt damit intakt, ein neuer Raum erscheint weiter von selbst {%- endcomment -
   <span style="display:flex;flex-direction:column;flex:1;min-width:0">
     {%- comment -%} Zeile 1: die nächsten fünf Tage {%- endcomment -%}
   <div style="display:flex;flex-direction:row;justify-content:space-between;width:100%">
-    {%- for i in (1..5) -%}
+    {%- for i in (0..4) -%}
       {%- assign dc2 = day.weather_code[i] -%}
       <span style="display:flex;flex-direction:column;align-items:center;flex:1">
         <span class="label label--small">
+        {%- comment -%} Erste Spalte ist heute, damit die Tagesspanne nicht zusätzlich
+        im Jetzt-Widget stehen muss {%- endcomment -%}
+        {%- if forloop.first -%}heute{%- else -%}
           {%- assign wd = day.time[i] | date: "%w" -%}
           {%- case wd -%}
             {%- when "0" -%}So{%- when "1" -%}Mo{%- when "2" -%}Di{%- when "3" -%}Mi
             {%- when "4" -%}Do{%- when "5" -%}Fr{%- else -%}Sa
           {%- endcase -%}
+        {%- endif -%}
         </span>
         {%- assign dsum = day.precipitation_sum[i] -%}
       {%- assign rn = i_rain1 -%}
