@@ -88,7 +88,7 @@ bleibt damit intakt, ein neuer Raum erscheint weiter von selbst {%- endcomment -
   ist der Grund, dass es schmal sein darf — vorher stand alles in einer Zeile und
   die diktierte die Breite des ganzen Blocks {%- endcomment -%}
   <span style="display:flex;flex-direction:column;justify-content:space-between;width:148px;flex:none">
-    <span style="display:inline-block;width:76px;height:76px">{{ icon_now }}</span>
+    <span style="display:inline-block;width:64px;height:64px">{{ icon_now }}</span>
     <span style="display:flex;flex-direction:column">
     <span class="value value--large">{{ cur.temperature_2m | round }}<span style="color:#555555">&deg;</span></span>
     <span class="label label--small">
@@ -100,6 +100,31 @@ bleibt damit intakt, ein neuer Raum erscheint weiter von selbst {%- endcomment -
       {%- when 85, 86 -%}Schneeschauer{%- when 95, 96, 99 -%}Gewitter
       {%- else -%}&mdash;{%- endcase %} &middot; {{ cur.relative_humidity_2m }}&nbsp;% rF
     </span>
+    {%- comment -%} Windrichtung meteorologisch: der Pfeil zeigt, wohin der Wind
+    weht (Richtung + 180), der Text nennt woher er kommt. Achtsektoren, damit
+    "aus SW" statt 199 Grad dasteht {%- endcomment -%}
+    {%- assign wdir = cur.wind_direction_10m -%}
+    {%- assign wsec = wdir | plus: 22.5 | divided_by: 45.0 | floor | modulo: 8 -%}
+    {%- assign warrow = wdir | plus: 180 -%}
+    {%- if cur.wind_speed_10m -%}
+    <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:5px">
+      <span style="display:inline-block;width:13px;height:13px;flex:none">
+        <svg viewBox="0 0 16 16" width="13" height="13">
+          <g transform="rotate({{ warrow }} 8 8)" fill="#555555">
+            <polygon points="8,1.4 12.4,7.2 9.4,7.2 9.4,14.6 6.6,14.6 6.6,7.2 3.6,7.2"/>
+          </g>
+        </svg>
+      </span>
+      {%- comment -%} Alles auf einer Zeile und ohne Bindestrich am when: ein
+      {%- when 4 -%} würde das Leerzeichen vor dem Kürzel schlucken {%- endcomment -%}
+      <span>aus {% case wsec %}{% when 0 %}N{% when 1 %}NO{% when 2 %}O{% when 3 %}SO{% when 4 %}S{% when 5 %}SW{% when 6 %}W{% else %}NW{% endcase %} &middot; {{ cur.wind_speed_10m | round }}&nbsp;km/h</span>
+    </span>
+    {%- comment -%} Böen erst ab 40 km/h: darunter sagt das Mittel genug, und die
+    Zeile kostet Platz, den das Widget nur einmal hat {%- endcomment -%}
+    {%- if cur.wind_gusts_10m >= 40 -%}
+    <span class="label label--small" style="color:#555555">Böen {{ cur.wind_gusts_10m | round }}&nbsp;km/h</span>
+    {%- endif -%}
+    {%- endif -%}
     <span class="label label--small">Darmstadt {{ day.temperature_2m_min[0] | round }}&deg;&ndash;{{ day.temperature_2m_max[0] | round }}&deg;</span>
     <span class="label label--small" style="color:#555555;white-space:nowrap">auf {{ day.sunrise[0] | date: "%H:%M" }} &middot; unter {{ day.sunset[0] | date: "%H:%M" }}</span>
     </span>
@@ -156,7 +181,19 @@ bleibt damit intakt, ein neuer Raum erscheint weiter von selbst {%- endcomment -
        {%- assign c = hr.weather_code[i] -%}
        {%- assign p = hr.precipitation_probability[i] -%}
        <span style="display:flex;flex-direction:column;align-items:center;flex:1">
-         <span class="label label--small">{{ t | date: "%H" }}</span>
+         {%- comment -%} Windpfeil neben die Stunde statt in eine eigene Zeile:
+         eine weitere Zeile hätte der Kopfblock nicht mehr {%- endcomment -%}
+         <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:3px">{{ t | date: "%H" }}
+           {%- if hr.wind_direction_10m[i] -%}
+           <span style="display:inline-block;width:10px;height:10px;flex:none">
+             <svg viewBox="0 0 16 16" width="10" height="10">
+               <g transform="rotate({{ hr.wind_direction_10m[i] | plus: 180 }} 8 8)" fill="#555555">
+                 <polygon points="8,1.4 12.4,7.2 9.4,7.2 9.4,14.6 6.6,14.6 6.6,7.2 3.6,7.2"/>
+               </g>
+             </svg>
+           </span>
+           {%- endif -%}
+         </span>
          <span style="display:inline-block;width:22px;height:22px">
            {%- assign hm = hr.precipitation[i] -%}
            {%- assign rn = i_rain1 -%}

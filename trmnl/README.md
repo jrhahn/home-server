@@ -30,7 +30,8 @@ The 800x480 splits into a full-width weather header and, below it, two columns:
 |        |  29° 18° 23° 14° 25° 8°  30° 12° 25° 16°             |
 |  23°   +------------------------------------------------------+
 | bedeckt| Stündlich                        nächste 8 Stunden   |
-| DA 15– |  21   22   23   00   01   02   03   04               |
+| aus SW | 21 ↗  22 ↗  23 ↗  00 ↗  01 ↗  02 ↗  03 ↗  04 ↗       |
+| DA 15– |                                                      |
 |   26°  | 23°  22°  21°  20°  20°  20°  19°  19°               |
 | auf .. +------------------------------------------------------+
 +--------+ Radar     130 km O/W · 165 km N/S · Bild vor 8 Min.  |
@@ -121,7 +122,7 @@ No key, no account. Coordinates come from Home Assistant's own config
 - Verb: `GET`
 - Template (URL):
 
-      https://api.open-meteo.com/v1/forecast?latitude=49.8728&longitude=8.6512&timezone=Europe%2FBerlin&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,is_day&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,is_day&forecast_hours=12&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,sunrise,sunset&forecast_days=6
+      https://api.open-meteo.com/v1/forecast?latitude=49.8728&longitude=8.6512&timezone=Europe%2FBerlin&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,is_day,wind_direction_10m&forecast_hours=12&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,sunrise,sunset&forecast_days=6
 
 - Headers: none
 
@@ -316,6 +317,45 @@ antialiasing that follows is exactly what the 2-bit quantizer turns into
 speckle. The battery fill sits one pixel inside the shell, which is not
 cosmetic: without that gutter a black low-charge fill merges with the black
 border and 20 % reads as an empty battery.
+
+### Wind
+
+Two places, because there was room for two and no more.
+
+The current conditions carry the full reading: an arrow, the direction it comes
+from as one of eight sectors, and the speed — `aus SW · 12 km/h`. The hourly
+strip carries direction only, as a 10 px arrow beside the hour. A wind line of
+its own in the strip would have cost 14 px the header did not have; beside the
+hour it costs nothing, and direction per hour is the part worth having there,
+since it shows the wind backing or veering over the evening.
+
+The arrow points **where the wind is going** (direction + 180°) while the text
+says where it comes from. Both conventions are in use and mixing them silently
+is a real trap, so the text spells it out with `aus`. Verified by rendering the
+snippet at 0°, 45°, ... 315°: `aus 0°` must point down, `aus 270°` right.
+
+The eight sectors come out of `wdir | plus: 22.5 | divided_by: 45.0 | floor |
+modulo: 8`, which puts 199° in `S` and 227° in `SW`. Dividing by `45.0` rather
+than `45` matters — integer division would collapse the sectors.
+
+Gusts print only from 40 km/h up. Below that the mean says enough and the line
+is not worth a row of the widget; above it, gusts are the number that decides
+whether anything outside needs securing.
+
+Paying for the line: the current-conditions icon went from 76 px back to 64.
+It had only been enlarged to fill slack in that column, and slack loses to data.
+
+Both readings are guarded — `{%- if cur.wind_speed_10m -%}` and
+`{%- if hr.wind_direction_10m[i] -%}` — so a template pasted before the exchange
+URL gains its wind parameters shows nothing rather than `aus N · 0 km/h`.
+Getting the guard wrong is instructive: the first attempt closed the `if` after
+the hour label's `</span>` instead of before it, so with no wind data the tag
+vanished with it and the whole hourly strip collapsed into a vertical list while
+the five-day row disappeared. Unbalanced markup does not fail, it re-flows.
+
+One Liquid trap on the way: `{%- when 4 -%} S` renders as `ausS`, because the
+closing `-%}` strips the space that follows it. Whitespace control inside a
+`case` has to go on the outside of the branch, not the inside.
 
 ### The radar thumbnails
 
