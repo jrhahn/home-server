@@ -437,11 +437,13 @@ instead of four.
 | tiles | 33/21 and 33/22 at (-55, -85) and (-55, 171) |
 | marks | Darmstadt 83/105, Groß-Gerau 75/101, Heidelberg 84/138 |
 | column | 3 x 166 + 2 separators + 4 gaps of 8 = 532 px |
+| marks | DA 83/105, GG 75/101, HD 84/138, FFM 84/88, MZ 64/96 |
+| rivers | 23 polylines, 115 points, Douglas-Peucker at 1.2 px |
 
 Every mark, label, tile offset and the column width move when the frame size
 does — thirteen numbers, which is more than is safe by hand. The frame size has
 already been changed four times in this screen's life, so the arithmetic lives
-in a script rather than in a habit: it takes the template, a width and a height, computes
+in a script rather than in a habit: it takes the template, a width and a height, fetches the rivers, computes
 the window origin, the tile offsets, the three marks and their labels, asserts
 that the window still falls inside a single tile column, and writes a new
 template. Point it at a copy, render, and compare before overwriting anything.
@@ -451,11 +453,23 @@ column both carry `flex:none`, so a script that finds "the fixed-width column"
 by pattern hits the wrong one and squeezes the header instead. Anchor on
 `<span>Radar</span>` and count back two lines.
 
+**Rhine and Main are drawn in**, and they carry more of the orientation than
+the marks do: the Rhine coming up from the south, its bend west through the
+Rheingau, the Main joining from the east. The geometry comes from OpenStreetMap
+via Overpass (`waterway=river`, `name=Rhein`/`Main`, clipped to the window's
+bounding box), which returns 226 ways and 4033 points for this window. Chained
+at shared endpoints, projected, split where they leave the frame and simplified
+with Douglas-Peucker at 1.2 px, that becomes 23 polylines with 115 points and
+3 KB — defined once with `capture` and emitted in all three frames, like the
+weather icons. `#AAAAAA`, 1 px, `shape-rendering="crispEdges"`, so the lines
+stay lines rather than dithering into dots.
+
 Marks are 5 px crosses, deliberately not dots: a gray square of a few pixels is
 exactly what a weak echo looks like, while a cross cannot be mistaken for
 weather. Darmstadt gets a larger black one because Groß-Gerau is 8 px away.
 
-Labels are the **licence plate codes** — `DA`, `GG`, `HD` — not the names.
+Labels are the **licence plate codes** — `DA`, `GG`, `HD`, `FFM`, `MZ` — not the
+names.
 Two characters cannot collide with each other at this scale, they leave the
 picture to the weather, and anyone living here reads them without a legend.
 Written out, the names had to be pushed to opposite sides of their crosses to
@@ -464,10 +478,11 @@ avoid overlapping, and `Groß-Gerau` at 66 px still came back clipped to
 cross rather than beside it, so that `GG` and `DA` do not run together into one
 token 8 px apart.
 
-Adding more of them is cheap in pixels but not in clarity: a version with
-Frankfurt, Mainz, Mannheim and Würzburg turned the frame busy, and `MZ` landed
-on top of `GG` — Mainz and Groß-Gerau are 11 px apart here. Their coordinates
-are in the template's comment if it is ever worth another try.
+Five places within 40 px of each other need staggering, not a rule: `MZ` sits
+left of its cross, `GG` above, `FFM` further above again, `DA` and `HD` to the
+right of theirs. The first attempt put `GG` and `MZ` on the same line and the
+panel showed `GMZ`. Each label's offset is therefore a per-city value in
+`radar-geometry.py`, not a shared default.
 
 No frame around each window, and no scale bar. But some separation is not
 optional: with three borderless windows 26 px apart, the echoes run together

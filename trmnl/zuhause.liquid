@@ -82,6 +82,34 @@ bleibt damit intakt, ein neuer Raum erscheint weiter von selbst {%- endcomment -
 {%- assign frames = paths | split: "|" -%}
 {%- assign frame_labels = "vor 2 h|vor 1 h|jetzt" | split: "|" -%}
 
+{%- comment -%} Rhein und Main aus OpenStreetMap, projiziert und vereinfacht;
+einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%- endcomment -%}
+{%- capture rivers -%}
+  <polyline points="39,83 38,83" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="64,168 69,159 71,149 75,145 74,143 76,135 73,134 72,125 69,118 75,112 72,112 69,104 69,99 64,93 48,97 43,92 40,85 34,79 37,77 34,73 35,68 25,63 20,55 17,54 15,45 7,36 10,33 6,30 6,22 1,18 2,16 1,12 -1,14 -3,11" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="64,94 62,93" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="66,95 64,93" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="29,66 28,65" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="58,94 54,96" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="153,102 152,105 154,105 152,106 154,109 153,110" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="92,87 89,86 88,88 78,89 72,96 66,96" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="143,113 141,110" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="166,93 160,94 156,92 152,97" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="141,110 139,110 135,100 131,95 132,93 128,91 128,93 125,96 125,108 127,110 124,111 124,114 121,110 119,112 118,110 113,112 113,114 110,117 105,109 106,104 104,99 105,97 102,97 100,93 98,92 98,90 94,87" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="119,111 118,110" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="117,111 117,111" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="105,98 105,97" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="141,111 141,110" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="162,94 161,94" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="152,98 152,101" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="152,110 152,114" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="143,113 143,113" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="152,115 151,119 147,119 143,113" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="151,115 151,116" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="150,119 150,119" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+  <polyline points="146,119 146,118" fill="none" stroke="#AAAAAA" stroke-width="1" shape-rendering="crispEdges"/>
+{%- endcapture -%}
+
 <div style="display:flex;flex-direction:row;align-items:stretch;width:100%;gap:16px">
 
   {%- comment -%} Jetzt: hoch und schmal. Der Umbruch vor Sonnenauf- und -untergang
@@ -369,16 +397,23 @@ bleibt damit intakt, ein neuer Raum erscheint weiter von selbst {%- endcomment -
           <img src="{{ host }}{{ p }}/256/6/33/21/0/1_1.png" alt="" width="256" height="256" style="position:absolute;left:-55px;top:-85px;width:256px;height:256px;filter:grayscale(1)">
           <img src="{{ host }}{{ p }}/256/6/33/22/0/1_1.png" alt="" width="256" height="256" style="position:absolute;left:-55px;top:171px;width:256px;height:256px;filter:grayscale(1)">
           <svg viewBox="0 0 166 209" width="166" height="209" style="position:absolute;left:0;top:0">
+            {{ rivers }}
             <rect x="77" y="105" width="13" height="1" fill="#000000"/>
             <rect x="83" y="99" width="1" height="13" fill="#000000"/>
             <rect x="73" y="101" width="5" height="1" fill="#555555"/>{%- comment -%} GG {%- endcomment -%}
             <rect x="75" y="99" width="1" height="5" fill="#555555"/>
             <rect x="82" y="138" width="5" height="1" fill="#555555"/>{%- comment -%} HD {%- endcomment -%}
             <rect x="84" y="136" width="1" height="5" fill="#555555"/>
+            <rect x="82" y="88" width="5" height="1" fill="#555555"/>{%- comment -%} FFM {%- endcomment -%}
+            <rect x="84" y="86" width="1" height="5" fill="#555555"/>
+            <rect x="62" y="96" width="5" height="1" fill="#555555"/>{%- comment -%} MZ {%- endcomment -%}
+            <rect x="64" y="94" width="1" height="5" fill="#555555"/>
           </svg>
           <span class="label label--small" style="position:absolute;left:90px;top:98px;background:#FFFFFF;color:#000000">DA</span>
-          <span class="label label--small" style="position:absolute;left:47px;top:83px;background:#FFFFFF;color:#555555">GG</span>
+          <span class="label label--small" style="position:absolute;left:68px;top:85px;background:#FFFFFF;color:#555555">GG</span>
           <span class="label label--small" style="position:absolute;left:91px;top:131px;background:#FFFFFF;color:#555555">HD</span>
+          <span class="label label--small" style="position:absolute;left:78px;top:71px;background:#FFFFFF;color:#555555">FFM</span>
+          <span class="label label--small" style="position:absolute;left:46px;top:89px;background:#FFFFFF;color:#555555">MZ</span>
         </span>
       </span>
         {%- comment -%} Kein Rahmen ums Bild, aber ohne irgendeine Trennung laufen die
