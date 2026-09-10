@@ -282,10 +282,14 @@ three signal bars and, where there is a cell, its charge. They sit next to the
 name because the three-line budget above has no room for a fourth line, and a
 glyph costs no height at all.
 
-The bars are the same shape as the panel's own, scaled to 12x10, but driven by
-dBm instead of a percentage: lit at `>= -80`, `-70` and `-60`. A node with no
-reading draws no glyph rather than three empty bars — absent and weak are
-different states, and only one of them is worth a shape on the screen.
+The bars are the panel tile's own shape scaled to 12x10, and deliberately its
+**same thresholds** — `>= -90`, `-70`, `-61`, the mapping
+[Battery and WiFi](#battery-and-wifi) spells out for `wifi_percentage`. The
+panel's reading arrives as a percentage and gets converted there; a node's
+arrives as dBm and needs no conversion, but two glyphs on one screen have to
+mean the same thing. A node with no reading draws no glyph rather than three
+empty bars — absent and weak are different states, and only one of them is
+worth a shape on the screen.
 
 The reading comes from the firmware, which publishes `rssi` in dBm with
 `device_class: signal_strength` on every node (`src/rssi.rs` in
