@@ -275,6 +275,31 @@ wins, so `Schlafzimmer Temperatur` beats `Schlafzimmer SCD41 Temperatur`.
 Sensors reading `unavailable`/`unknown` are shown as `offline` rather than
 hidden, so a dead sensor is visible instead of silently missing.
 
+### Node health shares the name line
+
+Each tile's name line carries two things about the *node* rather than the room:
+three signal bars and, where there is a cell, its charge. They sit next to the
+name because the three-line budget above has no room for a fourth line, and a
+glyph costs no height at all.
+
+The bars are the same shape as the panel's own, scaled to 12x10, but driven by
+dBm instead of a percentage: lit at `>= -80`, `-70` and `-60`. A node with no
+reading draws no glyph rather than three empty bars — absent and weak are
+different states, and only one of them is worth a shape on the screen.
+
+The reading comes from the firmware, which publishes `rssi` in dBm with
+`device_class: signal_strength` on every node (`src/rssi.rs` in
+`rs-smarthome-nodes`). dBm rather than bars on purpose: the number is the
+measurement, how many bars it is worth is a question for whatever draws it, and
+a sleeping node cannot be asked to re-map its own scale afterwards. Getting the
+value needs the raw `esp_wifi_sta_get_ap_info` binding — `esp-wifi` exposes
+signal strength only through a scan, which would cost a radio sweep and disturb
+the association being measured.
+
+Charge is matched on `device_class: battery`, so it picks up the percentage and
+not the cell voltage beside it. Only the terrace node has one today; every other
+tile simply omits it.
+
 ### A retired sensor keeps its room
 
 Because an `unavailable` reading prints as `offline` rather than vanishing, a
