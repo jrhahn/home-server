@@ -25,147 +25,23 @@
       recorder = { };
       history = { };
 
-      # rs-bird-scale (Meisenknödel feeder scale) MQTT entities. The firmware
-      # publishes ready-to-use grams to `birds/scale/state` and °C to
-      # `birds/scale/temperature`, and reads retained calibration/tuning back
-      # from `birds/scale/config/*` on its next online cycle (bird visit or
-      # periodic heartbeat), persisting it to its own flash.
+      # The feeder scale used to be declared here by hand, as nine MQTT
+      # entities on `birds/scale/*` plus a tare script. All of it is gone: the
+      # firmware retired that topic prefix when the node was renamed from
+      # `draussen` to `terrasse`, and it now publishes MQTT discovery configs
+      # instead, so Home Assistant creates the device itself. Nothing in this
+      # file has to know the fleet's topics any more.
       #
-      # These are *manually configured* MQTT entities, so they only load once
-      # the MQTT integration (broker connection) exists as a config entry --
-      # add it once via the UI: Settings -> Devices & Services -> Add
-      # Integration -> MQTT, broker 127.0.0.1:1883, user `homeassistant`
-      # (see modules/mosquitto.nix). configuration.yaml itself is regenerated
-      # from this attrset on every restart, so this is the only place these
-      # belong.
-      mqtt = {
-        sensor = [
-          {
-            name = "Meisenknödel Gewicht";
-            unique_id = "birdscale_weight";
-            state_topic = "birds/scale/state";
-            unit_of_measurement = "g";
-            device_class = "weight";
-            state_class = "measurement";
-          }
-          {
-            name = "Meisenknödel Temperatur";
-            unique_id = "birdscale_temperature";
-            state_topic = "birds/scale/temperature";
-            unit_of_measurement = "°C";
-            device_class = "temperature";
-            state_class = "measurement";
-          }
-        ];
+      # The entities were left behind long after the firmware stopped feeding
+      # them, which is why the e-ink panel kept saying "Meisenknödel" -- the
+      # name was ours, not the node's.
 
-        # Calibration & tuning: "optimistic" (no state_topic), published
-        # retained to birds/scale/config/<key>; the device reads them back and
-        # stores them in flash. Changes apply with a short delay, not instantly.
-        number = [
-          {
-            name = "Meisenknödel Auslöseschwelle";
-            unique_id = "birdscale_threshold";
-            command_topic = "birds/scale/config/threshold";
-            unit_of_measurement = "g";
-            min = 0;
-            max = 500;
-            step = 1;
-            mode = "box";
-            retain = true;
-          }
-          {
-            name = "Meisenknödel Kalibrierfaktor";
-            unique_id = "birdscale_scale_factor";
-            command_topic = "birds/scale/config/scale_factor";
-            min = 1;
-            max = 100000;
-            step = 0.1;
-            mode = "box";
-            retain = true;
-          }
-          {
-            name = "Meisenknödel Tara-Offset";
-            unique_id = "birdscale_offset";
-            command_topic = "birds/scale/config/offset";
-            min = -8388608;
-            max = 8388607;
-            step = 1;
-            mode = "box";
-            retain = true;
-          }
-          {
-            name = "Meisenknödel Idle-Intervall";
-            unique_id = "birdscale_idle_interval";
-            command_topic = "birds/scale/config/idle_interval";
-            unit_of_measurement = "s";
-            min = 1;
-            max = 3600;
-            step = 1;
-            mode = "box";
-            retain = true;
-          }
-          {
-            name = "Meisenknödel Aktiv-Intervall";
-            unique_id = "birdscale_active_interval";
-            command_topic = "birds/scale/config/active_interval";
-            unit_of_measurement = "s";
-            min = 1;
-            max = 3600;
-            step = 1;
-            mode = "box";
-            retain = true;
-          }
-          {
-            # How often to publish temperature + weight even without a visitor,
-            # so HA keeps a fresh reading. Realised as a whole number of idle
-            # intervals on the device.
-            name = "Meisenknödel Heartbeat-Intervall";
-            unique_id = "birdscale_heartbeat_interval";
-            command_topic = "birds/scale/config/heartbeat_interval";
-            unit_of_measurement = "s";
-            min = 10;
-            max = 86400;
-            step = 10;
-            mode = "box";
-            retain = true;
-          }
-        ];
-
-        # OFF keeps the device awake with Wi-Fi up (bench testing on USB); ON is
-        # normal battery deep sleep. Takes effect on the next online cycle.
-        switch = [
-          {
-            name = "Meisenknödel Deep Sleep";
-            unique_id = "birdscale_deep_sleep";
-            command_topic = "birds/scale/config/deep_sleep";
-            payload_on = "1";
-            payload_off = "0";
-            retain = true;
-          }
-        ];
-      };
-
-      # Re-zero (tare): publishes a *fresh* retained token so each run triggers
-      # a re-zero on the device's next online cycle. Run it with the pan empty.
-      script.birdscale_tare = {
-        alias = "Meisenknödel tarieren";
-        sequence = [
-          {
-            service = "mqtt.publish";
-            data = {
-              topic = "birds/scale/config/tare";
-              retain = true;
-              payload = "{{ now().timestamp() | int }}";
-            };
-          }
-        ];
-      };
     };
 
     # Main dashboard, defined in nix so it is versioned and appears
     # automatically after a rebuild (this replaces the auto-generated
     # storage dashboard). Three tabs:
-    #  - "Meisenknödel": the feeder scale (landing view, so weight + temperature
+    #  - "Terrasse": the feeder scale (landing view, so weight + temperature
     #    are the first thing the app shows).
     #  - "Klima": the rs-smarthome-nodes sensor fleet, one card group per room.
     #  - "Zuhause": the classic auto layout (original-states strategy, grouped by
@@ -179,29 +55,49 @@
       title = "Zuhause";
       views = [
         {
-          title = "Meisenknödel";
-          path = "meisenknoedel";
+          # The bird-feeder scale on the terrace. Every entity here is
+          # MQTT-discovered: nothing about this node is declared in nix any
+          # more, only where its readings belong.
+          title = "Terrasse";
+          path = "terrasse";
           icon = "mdi:bird";
           cards = [
             {
               type = "glance";
-              title = "Meisenknödel-Waage";
+              title = "Vogelwaage";
               state_color = true;
               columns = 2;
               entities = [
                 {
-                  entity = "sensor.meisenknodel_gewicht";
+                  entity = "sensor.terrasse_gewicht";
                   name = "Gewicht";
                 }
                 {
-                  entity = "sensor.meisenknodel_temperatur";
+                  # Length of the *last* visit, so it is stale between birds by
+                  # design -- see the descriptor's note in the firmware.
+                  entity = "sensor.terrasse_besuchsdauer";
+                  name = "Besuch";
+                }
+                {
+                  entity = "sensor.terrasse_temperatur";
                   name = "Temperatur";
+                }
+                {
+                  entity = "sensor.terrasse_feuchte";
+                  name = "Feuchte";
+                }
+                {
+                  # `device_class: battery`, so this renders with Home
+                  # Assistant's own battery icon. It is an estimate off the
+                  # voltage -- the measurement itself is a row further down.
+                  entity = "sensor.terrasse_batterie_ladestand";
+                  name = "Akku";
                 }
               ];
             }
             {
               type = "gauge";
-              entity = "sensor.meisenknodel_temperatur";
+              entity = "sensor.terrasse_temperatur";
               name = "Temperatur";
               unit = "°C";
               min = -10;
@@ -217,8 +113,8 @@
               title = "Verlauf (24 h)";
               hours_to_show = 24;
               entities = [
-                { entity = "sensor.meisenknodel_gewicht"; }
-                { entity = "sensor.meisenknodel_temperatur"; }
+                { entity = "sensor.terrasse_gewicht"; }
+                { entity = "sensor.terrasse_temperatur"; }
               ];
             }
             {
@@ -226,38 +122,42 @@
               title = "Kalibrierung & Tuning";
               show_header_toggle = false;
               entities = [
-                { entity = "number.meisenknodel_kalibrierfaktor"; }
-                { entity = "number.meisenknodel_tara_offset"; }
-                { entity = "number.meisenknodel_ausloseschwelle"; }
-                {
-                  type = "button";
-                  name = "Tarieren (Waage leer!)";
-                  icon = "mdi:scale-balance";
-                  action_name = "Ausführen";
-                  tap_action = {
-                    action = "call-service";
-                    service = "script.birdscale_tare";
-                  };
-                }
+                # Tarieren is a discovered `button` now, so it is a plain row.
+                # The old call-service card existed only because the tare was a
+                # hand-written script publishing to MQTT itself.
+                { entity = "button.terrasse_tarieren"; }
+                { entity = "number.terrasse_kalibrierfaktor"; }
+                { entity = "number.terrasse_tara_offset"; }
+                { entity = "number.terrasse_ausloseschwelle"; }
                 { type = "divider"; }
-                { entity = "number.meisenknodel_idle_intervall"; }
-                { entity = "number.meisenknodel_aktiv_intervall"; }
-                { entity = "number.meisenknodel_heartbeat_intervall"; }
-                { entity = "switch.meisenknodel_deep_sleep"; }
+                { entity = "number.terrasse_idle_intervall"; }
+                { entity = "number.terrasse_aktiv_intervall"; }
+                { entity = "number.terrasse_heartbeat_intervall"; }
+                { entity = "switch.terrasse_deep_sleep"; }
+                # The escape hatch: forgets what the node believes the broker
+                # holds, so the next connect announces every entity again.
+                # Needed once already — ten of fourteen announcements had
+                # arrived and nothing could tell the node otherwise.
+                { entity = "button.terrasse_discovery_neu_ankundigen"; }
+                { type = "divider"; }
+                # The measurement behind the percentage above. Worth keeping in
+                # view: between 3.7 and 4.0 V lives most of the capacity and
+                # almost none of the voltage swing, so the percentage is soft
+                # in the middle and this is the number that is not.
+                { entity = "sensor.terrasse_batterie_spannung"; }
               ];
             }
           ];
         }
         {
-          # The rs-smarthome-nodes sensor fleet. Unlike the Meisenknödel
-          # entities above, these are *not* declared anywhere in nix: each node
-          # publishes MQTT discovery configs and Home Assistant creates the
-          # device itself. Only this dashboard view is hand-written, because
-          # discovery says what an entity *is*, not where it should be shown.
+          # The rest of the rs-smarthome-nodes fleet. Like the terrace view
+          # above, none of it is declared in nix: each node publishes MQTT
+          # discovery configs and Home Assistant creates the device itself.
+          # Only the dashboard is hand-written, because discovery says what an
+          # entity *is*, not where it should be shown.
           #
           # One card group per node; the others follow as they are built
-          # (Wohnzimmer = SCD41 CO₂, Küche = SDS011 Feinstaub, Draußen = the
-          # feeder scale's SHT31-D).
+          # (Wohnzimmer = SCD41 CO₂ + SDS011 Feinstaub, Küche = SHT31-D).
           title = "Klima";
           path = "klima";
           icon = "mdi:home-thermometer";
