@@ -275,6 +275,41 @@ wins, so `Schlafzimmer Temperatur` beats `Schlafzimmer SCD41 Temperatur`.
 Sensors reading `unavailable`/`unknown` are shown as `offline` rather than
 hidden, so a dead sensor is visible instead of silently missing.
 
+### A retired sensor keeps its room
+
+Because an `unavailable` reading prints as `offline` rather than vanishing, a
+room outlives its sensors. Taking one out of the Nix configuration only makes
+its entity unavailable; the row stays in Home Assistant's entity registry,
+`GET /api/states` keeps serving it with its `friendly_name`, and the first word
+of that name is still a room. The feeder scale was renamed from `Meisenknödel`
+to `Terrasse` and its hand-declared entities retired, and a `Meisenknödel` tile
+stayed on the panel regardless — a sixth room, which also pushes the 2x3 grid
+into a fourth row.
+
+Nothing in this directory and nothing in Nix can fix that. The retained
+discovery topics on the broker were already clean, which is what makes this
+easy to misdiagnose as an MQTT leftover, and a rebuild proves nothing: the
+registry is persistent state in
+`/srv/home-assistant/.storage/core.entity_registry`, owned by the Home
+Assistant user and rewritten from memory on every change, so editing the file
+under a running instance is the wrong move as well.
+
+Removing the row is a WebSocket-only operation, `config/entity_registry/remove`,
+which the REST API has no equivalent for — `DELETE /api/states/...` drops the
+state and the entity comes back as `unavailable` on the next restart. In the UI
+it is `Settings` → `Devices & Services` → `Entities` filtered to unavailable;
+from a shell, [../scripts/ha-entity-registry.py](../scripts/ha-entity-registry.py):
+
+```
+scripts/ha-entity-registry.py list 'meisenknodel|birdscale'
+scripts/ha-entity-registry.py remove sensor.meisenknodel_temperatur
+```
+
+Verify against `/api/states`, not against the panel. The extension is rebuilt
+every 15 minutes on the quarter hour and the device fetches `/api/display`
+every twelve to fifteen, so the screen can sit half an hour behind a fix that
+has already landed.
+
 ### Battery and WiFi
 
 Bottom left, as the last tile of the room grid: the panel's own state is the one
