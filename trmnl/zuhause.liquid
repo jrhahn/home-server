@@ -316,27 +316,34 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
             {%- endif -%}
           {%- endif -%}
         {%- endfor -%}
-        <span style="display:flex;flex-direction:column;align-items:flex-start">
-          <span style="display:flex;flex-direction:row;align-items:center;gap:4px;white-space:nowrap">
+        <span style="display:flex;flex-direction:column;align-items:stretch">
+          {%- comment -%} Namenszeile: Raum links, Knotenzustand rechts an der Kachelkante.
+          `space-between` statt absoluter Positionierung -- die Glyphen sollen an einer
+          festen Kante sitzen und nicht mit der Namenslaenge wandern, und `right` ist
+          nicht belegt, dass der Sanitizer es durchlaesst {%- endcomment -%}
+          <span style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;width:100%;gap:6px;white-space:nowrap">
             <span class="label label--small">{{ room }}</span>
-            {%- comment -%} Drei Balken, dieselbe Form UND dieselben Schwellen wie beim
-            Panel -- >= -90 / -70 / -61, siehe README. Das Panel kommt dort ueber
-            wifi_percentage, hier steht das dBm direkt an; zwei Glyphen auf einem Screen
-            muessen dasselbe bedeuten. Ein Knoten ohne Messwert zeigt gar kein Glyph,
-            statt drei leere Balken zu behaupten {%- endcomment -%}
-            {%- if sig != "" -%}
-              {%- assign sn = sig | times: 1 -%}
-              <span style="display:inline-block;width:12px;height:10px;flex:none">
-                <svg viewBox="0 0 12 10" width="12" height="10">
-                  <rect x="0" y="6" width="3" height="4" fill="{% if sn >= -90 %}#000000{% else %}#AAAAAA{% endif %}"/>
-                  <rect x="4" y="3" width="3" height="7" fill="{% if sn >= -70 %}#000000{% else %}#AAAAAA{% endif %}"/>
-                  <rect x="8" y="0" width="3" height="10" fill="{% if sn >= -61 %}#000000{% else %}#AAAAAA{% endif %}"/>
-                </svg>
-              </span>
-            {%- endif -%}
-            {%- if nbat != "" -%}
-              <span class="label label--small" style="color:#555555">{{ nbat | round }}&nbsp;%</span>
-            {%- endif -%}
+            <span style="display:flex;flex-direction:row;align-items:center;gap:4px;flex:none">
+              {%- if nbat != "" -%}
+                <span class="label label--small" style="color:#555555">{{ nbat | round }}&nbsp;%</span>
+              {%- endif -%}
+              {%- comment -%} Drei Balken, dieselbe Form UND dieselben Schwellen wie beim
+              Panel -- >= -90 / -70 / -61, siehe README. Das Panel kommt dort ueber
+              wifi_percentage, hier steht das dBm direkt an; zwei Glyphen auf einem Screen
+              muessen dasselbe bedeuten. Ganz rechts, damit es in der Ecke der Kachel
+              sitzt. Ein Knoten ohne Messwert zeigt gar kein Glyph, statt drei leere
+              Balken zu behaupten {%- endcomment -%}
+              {%- if sig != "" -%}
+                {%- assign sn = sig | times: 1 -%}
+                <span style="display:inline-block;width:12px;height:10px;flex:none">
+                  <svg viewBox="0 0 12 10" width="12" height="10">
+                    <rect x="0" y="6" width="3" height="4" fill="{% if sn >= -90 %}#000000{% else %}#AAAAAA{% endif %}"/>
+                    <rect x="4" y="3" width="3" height="7" fill="{% if sn >= -70 %}#000000{% else %}#AAAAAA{% endif %}"/>
+                    <rect x="8" y="0" width="3" height="10" fill="{% if sn >= -61 %}#000000{% else %}#AAAAAA{% endif %}"/>
+                  </svg>
+                </span>
+              {%- endif -%}
+            </span>
           </span>
           <span class="value value--small">{% if rt != "" %}{{ rt | round: 1 }}<span style="color:#555555">&deg;</span>{% else %}<span style="color:#555555">&mdash;</span>{% endif %}</span>
           {%- comment -%} Feuchte und CO2 teilen eine Zeile: drei Zeilen pro Kachel

@@ -278,9 +278,17 @@ hidden, so a dead sensor is visible instead of silently missing.
 ### Node health shares the name line
 
 Each tile's name line carries two things about the *node* rather than the room:
-three signal bars and, where there is a cell, its charge. They sit next to the
-name because the three-line budget above has no room for a fourth line, and a
-glyph costs no height at all.
+three signal bars and, where there is a cell, its charge. They share the name
+line because the three-line budget below has no room for a fourth, and a glyph
+costs no height at all.
+
+They are pushed to the **right edge** of the tile with `justify-content:
+space-between`, not left next to the name. Beside the name they moved with its
+length, so `Schlafzimmer` and `Bad` put their glyphs in different places and the
+row of tiles read as crooked. A fixed edge is also why this is flex rather than
+`position:absolute` with `right`: the property is used nowhere else here, so
+whether the sanitizer keeps it is untested, while `justify-content` is already
+in use. The bars go last so they land in the corner itself.
 
 The bars are the panel tile's own shape scaled to 12x10, and deliberately its
 **same thresholds** — `>= -90`, `-70`, `-61`, the mapping
