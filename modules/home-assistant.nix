@@ -25,6 +25,29 @@
       recorder = { };
       history = { };
 
+      # "Birds today", which the node cannot produce itself: it has no clock
+      # and no NTP, so it cannot know when a day rolls over. It publishes a
+      # running total instead (`total_increasing`, counted at the arrival so
+      # neither a lost QoS0 message nor the 60 s publish rate limit can drop
+      # one), and the meter turns that into a per-day figure here.
+      #
+      # Daily rather than a template sensor over history: the raw states are
+      # purged after 10 days, while a utility meter keeps its own state and its
+      # own long-term statistics. The counter resetting to zero -- which it does
+      # whenever the board loses power entirely, since it lives in RTC RAM --
+      # is handled by the meter the same way Home Assistant handles any
+      # `total_increasing` reset, without inventing a negative day.
+      #
+      # The source id follows Home Assistant's slugify, which transliterates:
+      # `Küche` became `kuche` and `Auslöseschwelle` became `ausloseschwelle`,
+      # so `Terrasse Vögel gesamt` is `sensor.terrasse_vogel_gesamt`. Worth
+      # checking against the real entity the first time the node reports.
+      utility_meter.terrasse_voegel_heute = {
+        name = "Terrasse Vögel heute";
+        source = "sensor.terrasse_vogel_gesamt";
+        cycle = "daily";
+      };
+
       # The feeder scale used to be declared here by hand, as nine MQTT
       # entities on `birds/scale/*` plus a tare script. All of it is gone: the
       # firmware retired that topic prefix when the node was renamed from
