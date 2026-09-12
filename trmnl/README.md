@@ -241,9 +241,16 @@ plain `GET` sidesteps it, and 82 entities are only 36 KB.
 
 The template groups sensors by the first word of their `friendly_name`
 (`Schlafzimmer CO₂` → `Schlafzimmer`) and picks up anything with a
-`device_class` of `temperature`, `humidity`, `carbon_dioxide`, `pm25` or
-`pm10`. A new sensor appears on the panel by itself, with no edit here — which
-is the point, since more are coming.
+`device_class` of `temperature`, `humidity`, `carbon_dioxide`, `pm25`, `pm10`
+or `aqi`. A new sensor appears on the panel by itself, with no edit here —
+which is the point, since more are coming.
+
+`aqi` is what Home Assistant offers for a dimensionless air-quality number, and
+the living room's SGP41 publishes two of them: a VOC index and a NOx index.
+Only the VOC one reaches the panel, picked out by `voc` in its name. NOx comes
+from combustion and indoors it sits on its floor more or less for ever — a
+number that never moves is not worth the width. It is still in Home Assistant
+for anyone who wants to watch it.
 
 One kind cannot be found that way. A bird counter has no `device_class` at all,
 so it is matched on the name instead: a `friendly_name` containing `vogel` or
@@ -263,9 +270,11 @@ a Home Assistant install has hundreds of entities and this screen has room for
 about a dozen numbers.
 
 Both extras print as small gray lines under the temperature, since a room's
-reading is the temperature and everything else is context: `PM2.5 8 · PM10 14`
-for the SDS011 in the living room, `Vögel heute 12` over `gesamt 4831` on the
-terrace.
+reading is the temperature and everything else is context: `PM2.5 8 · PM10 14 ·
+VOC 102` for the living room's SDS011 and SGP41, `Vögel 12 · 4831` on the
+terrace. VOC joins the particulate line rather than opening a fourth one, for
+the same reason the bird counters share theirs — the tile budget is three
+lines, and a fourth pushes the second row of tiles off the screen.
 
 The grid order is not the derivation order. Alphabetical put `Bad` first, which
 is nobody's reading order, so a preferred list — `Wohnzimmer`, `Schlafzimmer`,

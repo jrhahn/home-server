@@ -45,6 +45,10 @@ an den Kindelementen überleben, Attribute am svg nicht. {%- endcomment -%}
     {%- assign keep = false -%}
     {%- if dc == "temperature" or dc == "humidity" or dc == "carbon_dioxide" -%}{%- assign keep = true -%}{%- endif -%}
     {%- if dc == "pm25" or dc == "pm10" -%}{%- assign keep = true -%}{%- endif -%}
+    {%- comment -%} `aqi` ist die device_class des VOC- und des NOx-Index vom
+    SGP41 -- dimensionslose Luftgütezahlen, für die Home Assistant nichts
+    Genaueres hat {%- endcomment -%}
+    {%- if dc == "aqi" -%}{%- assign keep = true -%}{%- endif -%}
     {%- comment -%} Der Vogelzähler hat keine device_class, also über den Namen.
     Beide Schreibweisen, klein geschrieben: der Knoten meldet "Vögel gesamt" und
     der Zähler daraus heißt "Terrasse Vögel heute" -- und "Vögel" enthält kein
@@ -293,6 +297,7 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
       {%- for room in rooms -%}
         {%- assign rt = "" -%}{%- assign rh = "" -%}{%- assign rc = "" -%}{%- assign tw = 99 -%}
         {%- assign p25 = "" -%}{%- assign p10 = "" -%}{%- assign vheute = "" -%}{%- assign vtotal = "" -%}
+        {%- assign voc = "" -%}
         {%- assign sig = "" -%}{%- assign nbat = "" -%}
         {%- for s in source_2 -%}
           {%- assign fn = s.attributes.friendly_name -%}
@@ -308,6 +313,16 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
                 {%- if dc == "carbon_dioxide" and rc == "" -%}{%- assign rc = st -%}{%- endif -%}
                 {%- if dc == "pm25" and p25 == "" -%}{%- assign p25 = st -%}{%- endif -%}
                 {%- if dc == "pm10" and p10 == "" -%}{%- assign p10 = st -%}{%- endif -%}
+                {%- comment -%} VOC und NOx teilen sich die device_class, also
+                über den Namen auseinandergehalten. Nur VOC kommt auf die
+                Kachel: NOx stammt aus Verbrennung und liegt drinnen dauerhaft
+                auf seinem Boden -- eine Zahl, die sich nie bewegt, ist die
+                Breite nicht wert. Sie steht weiter in Home Assistant
+                {%- endcomment -%}
+                {%- if dc == "aqi" and voc == "" -%}
+                  {%- assign lowvoc = fn | downcase -%}
+                  {%- if lowvoc contains "voc" -%}{%- assign voc = st -%}{%- endif -%}
+                {%- endif -%}
                 {%- comment -%} Zustand des Knotens, nicht des Raums: RSSI in dBm und,
                 wo es eine Zelle gibt, ihr Ladestand. Beide gehen in die Namenszeile,
                 weil das Drei-Zeilen-Budget der Kachel keine vierte Zeile hergibt {%- endcomment -%}
@@ -371,11 +386,18 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
               <span style="position:absolute;left:50%;top:-3px;width:2px;height:15px;background:#000000"></span>
             </span>
           {%- endif -%}
-          {%- if p25 != "" or p10 != "" -%}
+          {%- comment -%} Partikel und VOC teilen sich eine Zeile, statt dass VOC
+          eine vierte aufmacht: das Drei-Zeilen-Budget der Kachel ist der Grund,
+          aus dem die Vogelzeile schon eine statt zwei ist {%- endcomment -%}
+          {%- if p25 != "" or p10 != "" or voc != "" -%}
             <span class="label label--small" style="color:#555555;white-space:nowrap;margin-top:2px">
               {%- if p25 != "" -%}PM2.5&nbsp;{{ p25 | round }}{%- endif -%}
               {%- if p25 != "" and p10 != "" -%}<span style="color:#AAAAAA">&nbsp;&middot;&nbsp;</span>{%- endif -%}
               {%- if p10 != "" -%}PM10&nbsp;{{ p10 | round }}{%- endif -%}
+              {%- if voc != "" -%}
+                {%- if p25 != "" or p10 != "" -%}<span style="color:#AAAAAA">&nbsp;&middot;&nbsp;</span>{%- endif -%}
+                VOC&nbsp;{{ voc | round }}
+              {%- endif -%}
             </span>
           {%- endif -%}
           {%- if vheute != "" or vtotal != "" -%}
