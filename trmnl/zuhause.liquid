@@ -45,8 +45,14 @@ an den Kindelementen überleben, Attribute am svg nicht. {%- endcomment -%}
     {%- assign keep = false -%}
     {%- if dc == "temperature" or dc == "humidity" or dc == "carbon_dioxide" -%}{%- assign keep = true -%}{%- endif -%}
     {%- if dc == "pm25" or dc == "pm10" -%}{%- assign keep = true -%}{%- endif -%}
-    {%- comment -%} Der Vogelzähler hat keine device_class, also über den Namen {%- endcomment -%}
-    {%- if fn contains "Vogel" -%}{%- assign keep = true -%}{%- endif -%}
+    {%- comment -%} Der Vogelzähler hat keine device_class, also über den Namen.
+    Beide Schreibweisen, klein geschrieben: der Knoten meldet "Vögel gesamt" und
+    der Zähler daraus heißt "Terrasse Vögel heute" -- und "Vögel" enthält kein
+    "Vogel". Genau daran ist die Zeile vorher durchgefallen, still, weil ein
+    Filter der nichts behält aussieht wie ein Sensor der nichts sendet
+    {%- endcomment -%}
+    {%- assign fnl = fn | downcase -%}
+    {%- if fnl contains "vogel" or fnl contains "vögel" -%}{%- assign keep = true -%}{%- endif -%}
     {%- if keep -%}
       {%- assign word = fn | split: " " | first -%}
       {%- assign acc = acc | append: word | append: "|" -%}
@@ -307,8 +313,8 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
                 weil das Drei-Zeilen-Budget der Kachel keine vierte Zeile hergibt {%- endcomment -%}
                 {%- if dc == "signal_strength" and sig == "" -%}{%- assign sig = st -%}{%- endif -%}
                 {%- if dc == "battery" and nbat == "" -%}{%- assign nbat = st -%}{%- endif -%}
-                {%- if fn contains "Vogel" -%}
-                  {%- assign lower = fn | downcase -%}
+                {%- assign lower = fn | downcase -%}
+                {%- if lower contains "vogel" or lower contains "vögel" -%}
                   {%- if lower contains "heute" -%}{%- assign vheute = st -%}
                   {%- elsif lower contains "total" or lower contains "gesamt" -%}{%- assign vtotal = st -%}{%- endif -%}
                 {%- endif -%}

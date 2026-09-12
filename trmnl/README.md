@@ -246,11 +246,19 @@ The template groups sensors by the first word of their `friendly_name`
 is the point, since more are coming.
 
 One kind cannot be found that way. A bird counter has no `device_class` at all,
-so it is matched on the name instead: a `friendly_name` containing `Vogel`
-counts, and `heute` versus `total`/`gesamt` in the rest of the name decides
-which of the two numbers it is. That is the only name-based rule here, and it is
-a rule rather than a list so the counter can be renamed without touching this
-file. Anything else without a `device_class` stays invisible on purpose —
+so it is matched on the name instead: a `friendly_name` containing `vogel` or
+`vögel`, compared in lower case, counts — and `heute` versus `total`/`gesamt` in
+the rest of the name decides which of the two numbers it is. That is the only
+name-based rule here, and it is a rule rather than a list so the counter can be
+renamed without touching this file.
+
+Both spellings, because the first version of this rule tested for `Vogel`
+exactly and the entities are called `Terrasse Vögel gesamt` and `Terrasse Vögel
+heute`. Liquid's `contains` compares bytes, `ö` is not `o`, and so the panel
+showed no counter at all from the day the node started reporting one. Nothing
+logged it: a filter that keeps nothing looks exactly like a sensor that sends
+nothing, which is why it survived a rewrite of the tile layout and two rounds
+of "the node must not be publishing". Anything else without a `device_class` stays invisible on purpose —
 a Home Assistant install has hundreds of entities and this screen has room for
 about a dozen numbers.
 
