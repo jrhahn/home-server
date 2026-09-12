@@ -59,6 +59,10 @@
         ++ lib.optional server.trmnl.enable {
           domain = server.trmnlDomain;
           answer = server.tailscaleAddress;
+        }
+        ++ lib.optional server.smarthomeTimeseries.enable {
+          domain = server.timeseriesDomain;
+          answer = server.tailscaleAddress;
         };
       };
     };

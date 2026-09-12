@@ -61,6 +61,10 @@ in
       type = types.str;
       default = "trmnl.home.arpa";
     };
+    timeseriesDomain = mkOption {
+      type = types.str;
+      default = "verlauf.home.arpa";
+    };
 
     enablePublicTls = mkOption {
       type = types.bool;
@@ -152,6 +156,49 @@ in
         description = ''
           Tesseract OCR language(s); the matching language packs are installed
           automatically. Combine with '+', most-used first.
+        '';
+      };
+    };
+
+    smarthomeTimeseries = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Archive the sensor fleet's MQTT readings into QuestDB and serve the
+          history dashboard. Home Assistant already sees the same readings and
+          keeps them for days; this keeps them for years, which is what the
+          questions the fleet was built for need.
+
+          Brings up QuestDB on this machine as well, since nixpkgs ships the
+          package but no service. Needs the broker password at
+          /var/lib/secrets/mosquitto-archiver-password and the `archiver` user
+          on mosquitto (both created by modules/mosquitto.nix + by hand, see
+          secrets/README.md).
+        '';
+      };
+      retention = mkOption {
+        type = types.str;
+        default = "3y";
+        example = "5y";
+        description = ''
+          How long readings are kept, as a QuestDB table TTL. Expiry happens a
+          whole partition at a time, so this must be a whole number of days or
+          coarser: H(OURS), D(AYS), W(EEKS), M(ONTHS), Y(EARS). Empty keeps
+          everything.
+
+          Three years is about a gigabyte for this fleet; see
+          docs/long-term-history.md in rs-smarthome-nodes for the measurement
+          behind that figure.
+        '';
+      };
+      port = mkOption {
+        type = types.port;
+        default = 8087;
+        description = ''
+          Loopback port for the dashboard. Reached through nginx on
+          timeseriesDomain; the service has no authentication of its own, so it
+          never binds anything but loopback.
         '';
       };
     };

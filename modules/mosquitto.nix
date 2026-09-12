@@ -38,6 +38,22 @@
           ];
         };
 
+        # The history archiver (server.smarthomeTimeseries) is a third client,
+        # and the only one that never writes. Its own user rather than the
+        # fleet's: a subscriber that cannot publish cannot corrupt what it is
+        # archiving, and `read` is the whole permission it needs. Create its
+        # secret the same way as the others:
+        #   umask 077
+        #   printf '%s' 'your-chosen-password' \
+        #     > /var/lib/secrets/mosquitto-archiver-password
+        users.archiver = {
+          passwordFile = "/var/lib/secrets/mosquitto-archiver-password";
+          acl = [
+            "read smarthome/#" # the readings themselves, and node availability
+            "read homeassistant/#" # discovery configs, for units and names
+          ];
+        };
+
         # Home Assistant connects as a full client (subscribe to everything it
         # is configured for). Create its secret the same way.
         users.homeassistant = {
