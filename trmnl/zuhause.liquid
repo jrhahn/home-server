@@ -386,18 +386,31 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
               <span style="position:absolute;left:50%;top:-3px;width:2px;height:15px;background:#000000"></span>
             </span>
           {%- endif -%}
-          {%- comment -%} Partikel und VOC teilen sich eine Zeile, statt dass VOC
-          eine vierte aufmacht: das Drei-Zeilen-Budget der Kachel ist der Grund,
-          aus dem die Vogelzeile schon eine statt zwei ist {%- endcomment -%}
-          {%- if p25 != "" or p10 != "" or voc != "" -%}
+          {%- comment -%} Partikel in der Kurzform der Außenzeile -- `PM 3/5`, erst
+          PM2.5 dann PM10. Ausgeschrieben und mit VOC dahinter war diese Zeile mit
+          Abstand die breiteste der Kachel, und sie steht `nowrap`: die Spur des
+          Rasters ist damit min-content breit, also hat eine einzige Zeile die
+          ganze linke Spalte aufgezogen, statt umzubrechen. Kurzform plus VOC ist
+          genauso breit wie `PM2.5 8 &middot; PM10 14` allein vorher war.
+
+          Die Kurzform ist ohnehin die richtige: der Vergleich mit `außen PM 3/5`
+          im Kopf ist der Zweck der Innenmessung, und zwei Schreibweisen für
+          dieselbe Größe machen ihn zur Rechenaufgabe. Bei nur einem der beiden
+          Werte bleibt es ausgeschrieben -- `PM 3` allein sagt nicht, welcher.
+
+          VOC teilt sich die Zeile, statt eine vierte aufzumachen: dasselbe
+          Drei-Zeilen-Budget, aus dem auch die Vogelzeile eine statt zwei ist
+          {%- endcomment -%}
+          {%- capture pm -%}
+            {%- if p25 != "" and p10 != "" -%}PM&nbsp;{{ p25 | round }}/{{ p10 | round }}
+            {%- elsif p25 != "" -%}PM2.5&nbsp;{{ p25 | round }}
+            {%- elsif p10 != "" -%}PM10&nbsp;{{ p10 | round }}{%- endif -%}
+          {%- endcapture -%}
+          {%- if pm != "" or voc != "" -%}
             <span class="label label--small" style="color:#555555;white-space:nowrap;margin-top:2px">
-              {%- if p25 != "" -%}PM2.5&nbsp;{{ p25 | round }}{%- endif -%}
-              {%- if p25 != "" and p10 != "" -%}<span style="color:#AAAAAA">&nbsp;&middot;&nbsp;</span>{%- endif -%}
-              {%- if p10 != "" -%}PM10&nbsp;{{ p10 | round }}{%- endif -%}
-              {%- if voc != "" -%}
-                {%- if p25 != "" or p10 != "" -%}<span style="color:#AAAAAA">&nbsp;&middot;&nbsp;</span>{%- endif -%}
-                VOC&nbsp;{{ voc | round }}
-              {%- endif -%}
+              {{- pm -}}
+              {%- if pm != "" and voc != "" -%}<span style="color:#AAAAAA">&nbsp;&middot;&nbsp;</span>{%- endif -%}
+              {%- if voc != "" -%}VOC&nbsp;{{ voc | round }}{%- endif -%}
             </span>
           {%- endif -%}
           {%- if vheute != "" or vtotal != "" -%}

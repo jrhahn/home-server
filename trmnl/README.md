@@ -270,11 +270,26 @@ a Home Assistant install has hundreds of entities and this screen has room for
 about a dozen numbers.
 
 Both extras print as small gray lines under the temperature, since a room's
-reading is the temperature and everything else is context: `PM2.5 8 · PM10 14 ·
-VOC 102` for the living room's SDS011 and SGP41, `Vögel 12 · 4831` on the
-terrace. VOC joins the particulate line rather than opening a fourth one, for
-the same reason the bird counters share theirs — the tile budget is three
-lines, and a fourth pushes the second row of tiles off the screen.
+reading is the temperature and everything else is context: `PM 8/14 · VOC 102`
+for the living room's SDS011 and SGP41, `Vögel 12 · 4831` on the terrace. VOC
+joins the particulate line rather than opening a fourth one, for the same reason
+the bird counters share theirs — the tile budget is three lines, and a fourth
+pushes the second row of tiles off the screen.
+
+That particulate line is written `PM 8/14`, the same short form as `außen PM 3/5`
+in the header, and both halves of that are load-bearing. Spelled out as `PM2.5 8
+· PM10 14 · VOC 102` it was by a wide margin the longest line in any tile, and
+these lines are `nowrap`: a `1fr` track is `minmax(auto, 1fr)`, its `auto`
+minimum is min-content, and the min-content of an unbreakable line is the whole
+line. So one tile's text set the width of the entire left column, and the column
+grew past what the radar left it instead of wrapping. `PM 8/14 · VOC 102` is
+17 characters — exactly what `PM2.5 8 · PM10 14` was before VOC existed, which is
+the width that demonstrably fitted.
+
+Matching the header is the other half: comparing the room against outdoors is the
+whole point of measuring particulates indoors, and two notations for one quantity
+turn a glance into arithmetic. Where only one of the two is present it stays
+spelled out — `PM 3` alone does not say which one it is.
 
 The grid order is not the derivation order. Alphabetical put `Bad` first, which
 is nobody's reading order, so a preferred list — `Wohnzimmer`, `Schlafzimmer`,
@@ -438,7 +453,8 @@ readings work that way, and all three sit in the current-conditions column:
 PM2.5 then PM10. The point of it is the living room's own SDS011 reading a few
 centimetres away in the room grid — an indoor number without an outdoor one
 does not answer the question anybody actually has, which is whether to open a
-window.
+window. The tile prints its pair the same way, so the comparison is one glance
+rather than two formats.
 
 What paid for the new lines: the five-day row now starts **today** rather than
 tomorrow, which made `Darmstadt 15°–26°` in the column redundant and freed its
