@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   server,
   ...
@@ -6,6 +7,10 @@
 
 let
   cfg = server.smarthomeTimeseries;
+  # Where QuestDB listens, declared once by the module that starts it. Three
+  # things have to agree on this -- its own config file, the archiver, and the
+  # backup's checkpoint -- so none of them spells it out a second time.
+  questdb = config.services.smarthome-timeseries.questdb.httpEndpoint;
 in
 lib.mkIf cfg.enable {
   # The service itself, its schema and its QuestDB come from the fleet's own
@@ -29,6 +34,7 @@ lib.mkIf cfg.enable {
       };
 
       questdb = {
+        url = "http://${questdb}";
         retention = cfg.retention;
         # Every commit fans out into a refresh of the rollup views, so this is
         # the knob that sets steady-state database load. The fleet publishes

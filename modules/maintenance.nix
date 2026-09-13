@@ -21,7 +21,14 @@ let
     "/srv/seafile-redis"
   ]
   ++ lib.optionals server.paperless.enable [ "/srv/paperless" ]
-  ++ lib.optionals server.trmnl.enable [ "/srv/trmnl" ];
+  ++ lib.optionals server.trmnl.enable [ "/srv/trmnl" ]
+  # The sensor archive. Unlike every other database here it is not dumped to a
+  # file first: QuestDB's answer to "back me up while I run" is a checkpoint,
+  # which holds the data directory still while it is copied and costs no second
+  # copy on disk. See `questdbCheckpoint` below.
+  ++ lib.optionals server.smarthomeTimeseries.enable [
+    config.services.smarthome-timeseries.questdb.dataDir
+  ];
   haPaths = [ "/srv/home-assistant" ];
   familyExclude = [
     # Seafile's Redis rewrites its append-only file while borg reads it, which
@@ -34,6 +41,17 @@ let
   # Terminus' PostgreSQL writes here continuously; the consistent copy is the
   # dump under /srv/backups/database-dumps, so the raw cluster is skipped.
   ++ lib.optionals server.trmnl.enable [ "pp:/srv/trmnl/database" ];
+  # Copying a running QuestDB is a coin flip -- its write-ahead log may be
+  # mid-apply -- so the copy happens between these two. `CHECKPOINT CREATE`
+  # freezes the data directory; `CHECKPOINT RELEASE` lets it move again. (The
+  # older spelling, `SNAPSHOT PREPARE`/`COMPLETE`, still works on 9.3.)
+  questdbSql = sql: ''
+    ${pkgs.curl}/bin/curl -fsS --get \
+      "http://${config.services.smarthome-timeseries.questdb.httpEndpoint}/exec" \
+      --data-urlencode "query=${sql}" >/dev/null
+  '';
+  questdbRelease = questdbSql "CHECKPOINT RELEASE";
+
   hetznerCommon = {
     compression = "zstd,6";
     encryption = {
@@ -96,6 +114,27 @@ ${lib.optionalString server.paperless.enable ''
     '';
   };
 
+}
+
+{
+  # The release is wired to ExecStopPost rather than to the job's postHook, and
+  # that is the point of it: postHook does not run when borg fails, and a
+  # checkpoint left held makes QuestDB keep every write-ahead segment from then
+  # on -- a disk filling up days later, for a reason nobody connects to a backup
+  # that failed one night. ExecStopPost runs either way, and releasing when
+  # nothing is held answers OK, so the safety net costs nothing.
+  systemd.services = lib.mkIf server.smarthomeTimeseries.enable (
+    lib.genAttrs
+      (
+        [ "borgbackup-job-family-local" ]
+        ++ lib.optional hetzner.enable "borgbackup-job-family-hetzner"
+      )
+      (_: {
+        serviceConfig.ExecStopPost =
+          pkgs.writeShellScript "questdb-checkpoint-release" questdbRelease;
+      })
+  );
+
   services.borgbackup.jobs = {
     family-local = {
       paths = familyPaths;
@@ -111,6 +150,7 @@ ${lib.optionalString server.paperless.enable ''
       };
       preHook = ''
         ${pkgs.systemd}/bin/systemctl start dump-family-service-databases.service
+        ${lib.optionalString server.smarthomeTimeseries.enable (questdbSql "CHECKPOINT CREATE")}
       '';
     };
 
@@ -141,6 +181,7 @@ ${lib.optionalString server.paperless.enable ''
       exclude = familyExclude;
       preHook = ''
         ${pkgs.systemd}/bin/systemctl start dump-family-service-databases.service
+        ${lib.optionalString server.smarthomeTimeseries.enable (questdbSql "CHECKPOINT CREATE")}
       '';
     };
 
