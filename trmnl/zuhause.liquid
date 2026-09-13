@@ -17,6 +17,20 @@ an den Kindelementen überleben, Attribute am svg nicht. {%- endcomment -%}
 {%- capture i_storm -%}<svg viewBox="0 0 24 24" width="100%" height="100%"><path d="M6.8 14h10.4a3.6 3.6 0 0 0 .3-7.2 5.3 5.3 0 0 0-10.2-1.1A3.9 3.9 0 0 0 6.8 14z" fill="#AAAAAA"/><polygon points="13.4,15 8.8,20.6 11.9,20.6 10.2,24 15.6,18 12.4,18 14,15" fill="#000000"/></svg>{%- endcapture -%}
 {%- capture i_fog -%}<svg viewBox="0 0 24 24" width="100%" height="100%"><rect x="3" y="7.4" width="18" height="1.9" rx="0.95" fill="#555555"/><rect x="5.5" y="11.4" width="13" height="1.9" rx="0.95" fill="#AAAAAA"/><rect x="4" y="15.4" width="16" height="1.9" rx="0.95" fill="#555555"/><rect x="7" y="19.4" width="10" height="1.9" rx="0.95" fill="#AAAAAA"/></svg>{%- endcapture -%}
 {%- capture i_moon -%}<svg viewBox="0 0 24 24" width="100%" height="100%"><path d="M20 14.5A8.3 8.3 0 0 1 9.5 4a8.3 8.3 0 1 0 10.5 10.5z" fill="#555555"/></svg>{%- endcapture -%}
+{%- comment -%} Kachel-Icons. Dieselbe Regel wie oben: nur Flächen, fill nur
+an den Kindelementen. Für CO2 und VOC gibt es keine Silhouette, die man bei
+10 px erkennt -- die beiden bekommen darum ihr Kürzel als Text, was ohnehin
+eindeutiger ist als jedes Symbol, das man sich dafür ausdenken würde.
+{%- endcomment -%}
+{%- capture i_hum -%}<svg viewBox="0 0 24 24" width="100%" height="100%"><path d="M12 1.8c0 0-7.2 8.9-7.2 13.4a7.2 7.2 0 0 0 14.4 0c0-4.5-7.2-13.4-7.2-13.4z" fill="#555555"/></svg>{%- endcapture -%}
+{%- comment -%} Feinstaub: Körner in mehreren Größen, gestreut. Ein Symbol ohne
+Kontur, das bei 10 px noch als "Partikel" liest und nicht als Punktraster
+{%- endcomment -%}
+{%- capture i_pm -%}<svg viewBox="0 0 24 24" width="100%" height="100%"><g fill="#555555"><circle cx="6.6" cy="6.8" r="3.7"/><circle cx="17.2" cy="5.6" r="2.4"/><circle cx="18" cy="14.6" r="4.2"/><circle cx="8" cy="17.4" r="3.1"/></g></svg>{%- endcapture -%}
+{%- comment -%} Vogel: Körper, Kopf, Schnabel, Schwanz -- vier Flächen, mehr
+trägt die Größe nicht. Das Auge ist weiß ausgespart, sonst verschwindet der
+Kopf in einer einzigen grauen Fläche {%- endcomment -%}
+{%- capture i_bird -%}<svg viewBox="0 0 24 24" width="100%" height="100%"><g fill="#555555"><path d="M10.4 20.6c-3.7 0-6.7-2.5-6.7-5.6s3-5.6 6.7-5.6 6.7 2.5 6.7 5.6-3 5.6-6.7 5.6z"/><circle cx="15.8" cy="8.2" r="3.8"/><polygon points="19,6.9 23.8,8.4 19,9.9"/><polygon points="5.2,11.4 0.6,5.4 3.2,14"/></g><circle cx="17" cy="7.3" r="0.9" fill="#FFFFFF"/></svg>{%- endcapture -%}
 {%- capture i_moonc -%}<svg viewBox="0 0 24 24" width="100%" height="100%"><path d="M14.5 9.2A5.6 5.6 0 0 1 8 2.8a5.6 5.6 0 1 0 6.5 6.4z" fill="#555555"/><path d="M7.5 20h9.8a3.4 3.4 0 0 0 .3-6.8 5 5 0 0 0-9.6-1 3.9 3.9 0 0 0-.5 7.8z" fill="#AAAAAA"/></svg>{%- endcapture -%}
 
 {%- assign wc = cur.weather_code -%}
@@ -367,56 +381,70 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
             </span>
           </span>
           <span class="value value--small">{% if rt != "" %}{{ rt | round: 1 }}<span style="color:#555555">&deg;</span>{% else %}<span style="color:#555555">&mdash;</span>{% endif %}</span>
-          {%- comment -%} Feuchte und CO2 teilen eine Zeile: drei Zeilen pro Kachel
-          sind das Budget, wenn drei Reihen in die halbe Höhe müssen {%- endcomment -%}
-          <span class="label label--small" style="white-space:nowrap">
-            {%- if rt == "" -%}<span style="color:#555555">offline</span>
-            {%- else -%}
-              {%- if rh != "" -%}{{ rh | round }}<span style="color:#555555">&nbsp;%</span>{%- endif -%}
-              {%- if rh != "" and rc != "" -%}<span style="color:#AAAAAA">&nbsp;&middot;&nbsp;</span>{%- endif -%}
-              {%- if rc != "" -%}{{ rc | round }}<span style="color:#555555">&nbsp;ppm</span>{%- endif -%}
+          {%- comment -%} Ab hier eine Zeile pro Sensor, jede mit ihrem Zeichen
+          davor. Vorher teilten sich Feuchte und CO2 eine Zeile und Partikel und
+          VOC eine zweite, um im Drei-Zeilen-Budget zu bleiben; getrennt sagt
+          jede Zeile für sich, was sie ist, statt dass zwei Zahlen durch einen
+          Mittelpunkt getrennt nebeneinanderstehen und man wissen muss, welche
+          welche ist.
+
+          Die Temperatur bleibt ohne Zeichen: sie ist die Kachelmessung, steht
+          groß und trägt ihr Gradzeichen schon {%- endcomment -%}
+          {%- if rt == "" -%}
+            <span class="label label--small" style="color:#555555;white-space:nowrap">offline</span>
+          {%- else -%}
+            {%- if rh != "" -%}
+              <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:3px;color:#555555;white-space:nowrap;margin-top:2px">
+                <span style="display:inline-block;width:10px;height:10px;flex:none">{{ i_hum }}</span>
+                <span>{{ rh | round }}<span style="color:#555555">&nbsp;%</span></span>
+              </span>
             {%- endif -%}
-          </span>
-          {%- if rc != "" -%}
-            {%- assign rcn = rc | times: 1 -%}
-            {%- assign cw = rcn | times: 100.0 | divided_by: 2000.0 -%}
-            {%- if cw > 100 -%}{%- assign cw = 100 -%}{%- endif -%}
-            <span style="display:block;position:relative;width:92%;height:9px;background:#AAAAAA;margin-top:3px">
-              <span style="position:absolute;left:0;top:0;height:9px;width:{{ cw }}%;background:{% if rcn > 1000 %}#000000{% else %}#555555{% endif %}"></span>
-              <span style="position:absolute;left:50%;top:-3px;width:2px;height:15px;background:#000000"></span>
+            {%- if rc != "" -%}
+              <span class="label label--small" style="color:#555555;white-space:nowrap;margin-top:2px">CO&#8322;&nbsp;{{ rc | round }}<span style="color:#555555">&nbsp;ppm</span></span>
+            {%- endif -%}
+          {%- endif -%}
+          {%- comment -%} Partikel wieder ausgeschrieben -- `PM2.5 8 &middot; PM10 14`.
+          Die Kurzform `PM 8/14` gab es nur, weil VOC sich diese Zeile teilte;
+          VOC hat jetzt seine eigene.
+
+          Das ist die Zeile, die man im Auge behalten muss. Sie steht `nowrap`,
+          und eine `1fr`-Spur ist `minmax(auto, 1fr)`: ihr auto-Minimum ist
+          min-content, und das einer unumbrechbaren Zeile ist die ganze Zeile.
+          Diese hier ist damit breiter als jede andere in der Kachel, und zwar um
+          das Icon breiter als die Fassung, die nachweislich gepasst hat --
+          nebeneinander gemessen 125.6 px gegen 112.6 px, gut ein Zehntel mehr.
+          Drängt die linke Spalte irgendwann in den Radar, war es diese Zeile;
+          zurück geht es über die Kurzform hinter dem Icon, denn das Icon sagt
+          "Partikel" schon, `PM 8/14` verliert also nur noch, welche Zahl welche
+          ist.
+
+          Bezahlt sind die getrennten Zeilen mit dem CO2-Balken: der Wert steht
+          in ppm eine Zeile weiter oben, der Balken sagte nur noch, wo die
+          1000 ppm liegen.
+
+          Bei nur einem der beiden Partikelwerte bleibt es ausgeschrieben --
+          `PM 3` allein sagt nicht, welcher {%- endcomment -%}
+          {%- if p25 != "" or p10 != "" -%}
+            <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:3px;color:#555555;white-space:nowrap;margin-top:2px">
+              <span style="display:inline-block;width:10px;height:10px;flex:none">{{ i_pm }}</span>
+              <span>
+                {%- if p25 != "" -%}PM2.5&nbsp;{{ p25 | round }}{%- endif -%}
+                {%- if p25 != "" and p10 != "" -%}<span style="color:#AAAAAA">&nbsp;&middot;&nbsp;</span>{%- endif -%}
+                {%- if p10 != "" -%}PM10&nbsp;{{ p10 | round }}{%- endif -%}
+              </span>
             </span>
           {%- endif -%}
-          {%- comment -%} Partikel in der Kurzform der Außenzeile -- `PM 3/5`, erst
-          PM2.5 dann PM10. Ausgeschrieben und mit VOC dahinter war diese Zeile mit
-          Abstand die breiteste der Kachel, und sie steht `nowrap`: die Spur des
-          Rasters ist damit min-content breit, also hat eine einzige Zeile die
-          ganze linke Spalte aufgezogen, statt umzubrechen. Kurzform plus VOC ist
-          genauso breit wie `PM2.5 8 &middot; PM10 14` allein vorher war.
-
-          Die Kurzform ist ohnehin die richtige: der Vergleich mit `außen PM 3/5`
-          im Kopf ist der Zweck der Innenmessung, und zwei Schreibweisen für
-          dieselbe Größe machen ihn zur Rechenaufgabe. Bei nur einem der beiden
-          Werte bleibt es ausgeschrieben -- `PM 3` allein sagt nicht, welcher.
-
-          VOC teilt sich die Zeile, statt eine vierte aufzumachen: dasselbe
-          Drei-Zeilen-Budget, aus dem auch die Vogelzeile eine statt zwei ist
-          {%- endcomment -%}
-          {%- capture pm -%}
-            {%- if p25 != "" and p10 != "" -%}PM&nbsp;{{ p25 | round }}/{{ p10 | round }}
-            {%- elsif p25 != "" -%}PM2.5&nbsp;{{ p25 | round }}
-            {%- elsif p10 != "" -%}PM10&nbsp;{{ p10 | round }}{%- endif -%}
-          {%- endcapture -%}
-          {%- if pm != "" or voc != "" -%}
-            <span class="label label--small" style="color:#555555;white-space:nowrap;margin-top:2px">
-              {{- pm -}}
-              {%- if pm != "" and voc != "" -%}<span style="color:#AAAAAA">&nbsp;&middot;&nbsp;</span>{%- endif -%}
-              {%- if voc != "" -%}VOC&nbsp;{{ voc | round }}{%- endif -%}
-            </span>
+          {%- if voc != "" -%}
+            <span class="label label--small" style="color:#555555;white-space:nowrap;margin-top:2px">VOC&nbsp;{{ voc | round }}</span>
           {%- endif -%}
           {%- if vheute != "" or vtotal != "" -%}
-            {%- comment -%} Eine Zeile, nicht zwei: die Kachelreihen müssen in die
-            halbe Screenhöhe {%- endcomment -%}
-            <span class="label label--small" style="color:#555555;white-space:nowrap;margin-top:2px">Vögel {% if vheute != "" %}{{ vheute | round }}{% else %}&mdash;{% endif %}<span style="color:#AAAAAA">&nbsp;&middot;&nbsp;</span>{% if vtotal != "" %}{{ vtotal | round }}{% else %}&mdash;{% endif %}</span>
+            {%- comment -%} Heute und gesamt bleiben zusammen auf einer Zeile: das
+            ist ein Sensor, und der Vogel davor sagt schon, wovon die zwei Zahlen
+            handeln -- das Wort "Vögel" kann damit weg {%- endcomment -%}
+            <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:3px;color:#555555;white-space:nowrap;margin-top:2px">
+              <span style="display:inline-block;width:10px;height:10px;flex:none">{{ i_bird }}</span>
+              <span>{% if vheute != "" %}{{ vheute | round }}{% else %}&mdash;{% endif %}<span style="color:#AAAAAA">&nbsp;&middot;&nbsp;</span>{% if vtotal != "" %}{{ vtotal | round }}{% else %}&mdash;{% endif %}</span>
+            </span>
           {%- endif -%}
         </span>
       {%- endfor -%}

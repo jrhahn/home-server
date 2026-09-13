@@ -269,27 +269,45 @@ of "the node must not be publishing". Anything else without a `device_class` sta
 a Home Assistant install has hundreds of entities and this screen has room for
 about a dozen numbers.
 
-Both extras print as small gray lines under the temperature, since a room's
-reading is the temperature and everything else is context: `PM 8/14 · VOC 102`
-for the living room's SDS011 and SGP41, `Vögel 12 · 4831` on the terrace. VOC
-joins the particulate line rather than opening a fourth one, for the same reason
-the bird counters share theirs — the tile budget is three lines, and a fourth
-pushes the second row of tiles off the screen.
+Everything below the temperature prints as small gray lines, since a room's
+reading is the temperature and everything else is context. One line per sensor,
+each with its own mark in front: a droplet for humidity, a scatter of grains for
+particulates, a bird for the feeder counters, and for CO2 and VOC the short word
+itself. Neither of those two has a silhouette that survives being 10 px wide —
+a molecule and a vapour cloud both come out as a grey smudge — and `CO₂` says
+what it is more precisely than any drawing of it would.
 
-That particulate line is written `PM 8/14`, the same short form as `außen PM 3/5`
-in the header, and both halves of that are load-bearing. Spelled out as `PM2.5 8
-· PM10 14 · VOC 102` it was by a wide margin the longest line in any tile, and
-these lines are `nowrap`: a `1fr` track is `minmax(auto, 1fr)`, its `auto`
-minimum is min-content, and the min-content of an unbreakable line is the whole
-line. So one tile's text set the width of the entire left column, and the column
-grew past what the radar left it instead of wrapping. `PM 8/14 · VOC 102` is
-17 characters — exactly what `PM2.5 8 · PM10 14` was before VOC existed, which is
-the width that demonstrably fitted.
+The marks are what let each reading have its own line. Before them the tile
+budget was three lines and pairs shared: humidity with CO2, particulates with
+VOC, two numbers either side of a `·` where you had to know which was which.
+With a mark in front the line says what it is on its own, so the pairs are
+split. The fourth and fifth lines are paid for by the CO2 bar, which is gone —
+the value is in ppm one line up, and all the bar added on top of that was where
+1000 ppm sits.
 
-Matching the header is the other half: comparing the room against outdoors is the
-whole point of measuring particulates indoors, and two notations for one quantity
-turn a glance into arithmetic. Where only one of the two is present it stays
-spelled out — `PM 3` alone does not say which one it is.
+Particulates are spelled out again, `PM2.5 8 · PM10 14`. The short form `PM 8/14`
+existed only because VOC shared that line: written out together they were by a
+wide margin the longest text in any tile, and these lines are `nowrap`. A `1fr`
+track is `minmax(auto, 1fr)`, its `auto` minimum is min-content, and the
+min-content of an unbreakable line is the whole line — so one tile's text set the
+width of the entire left column, and the column grew past what the radar left it
+instead of wrapping. `PM 8/14 · VOC 102` was 17 characters, exactly what
+`PM2.5 8 · PM10 14` had been before VOC existed, which is the width that
+demonstrably fitted.
+
+Which makes this line the one to watch. With the icon in front it is that proven
+width plus 10 px of mark and 3 px of gap — measured side by side in a browser at
+the same size, 125.6 px against 112.6 px, about a tenth wider than the widest
+line the column has carried. If the left column starts crowding the radar, this
+is the line that did it, and the short form behind the icon is the way back:
+the mark already says "particulates", so `PM 8/14` loses only which number is
+which. Where just one of the two is present it stays spelled out regardless —
+`PM 3` alone does not say which one it is.
+
+The header still reads `außen PM 3/5` in the short form. Comparing the room
+against outdoors is the whole point of measuring particulates indoors, and two
+notations for one quantity do make that a small piece of arithmetic; it is the
+price of having the indoor line say which value is which.
 
 The grid order is not the derivation order. Alphabetical put `Bad` first, which
 is nobody's reading order, so a preferred list — `Wohnzimmer`, `Schlafzimmer`,
@@ -298,9 +316,11 @@ alphabetically. The derivation stays intact: a new room still appears on its
 own, just at the end until it is named in the list. Names in the list have to
 match the first word of the `friendly_name` exactly, umlaut included.
 
-Reordering is not free: the tiles differ in height, so moving `Wohnzimmer` and
-`Schlafzimmer` into the same row put both CO2 bars there and cost 4 px, which
-came out of the row gap.
+Reordering is not free: the tiles differ in height, so putting `Wohnzimmer` and
+`Schlafzimmer` in the same row stacks the two tallest ones side by side. It cost
+4 px out of the row gap back when both carried a CO2 bar, and it is the row to
+check first now that each sensor has its own line — `Wohnzimmer` is the tile
+with five of them.
 
 Where a room has several temperatures, the one with the shortest friendly name
 wins, so `Schlafzimmer Temperatur` beats `Schlafzimmer SCD41 Temperatur`.
@@ -788,8 +808,10 @@ They carry meaning rather than decoration:
   one should not read alike;
 * in the five-day header the daily high is black and the low gray;
 * a dead sensor prints `offline` in gray rather than vanishing;
-* the CO2 bar fills `#555555` below 1000 ppm and black above, with a tick at the
-  threshold — the one value here with an actionable limit;
+* the tile marks are drawn at the same two greys as the weather icons, `#555555`
+  for a solid shape, `#AAAAAA` where one sits behind another, and never an
+  outline — the sanitiser drops `fill` from the `<svg>` element itself, so a
+  silhouette built from filled children is the only kind that survives;
 * the battery fill follows the same past-the-threshold rule, `#555555` above
   20 % and black at or below, and the WiFi bars are black when lit and
   `#AAAAAA` when not, so the glyph carries the reading without the number.
