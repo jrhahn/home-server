@@ -1,4 +1,9 @@
-{ config, lib, server, ... }:
+{
+  config,
+  lib,
+  server,
+  ...
+}:
 
 {
   services.immich = {

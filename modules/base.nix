@@ -12,7 +12,8 @@ let
       lato
       sourcesanspro
       fontaxes
-      mweights;
+      mweights
+      ;
   };
 
   # graphifyy isn't in nixpkgs and pulls ~28 tree-sitter grammar wheels that
@@ -86,7 +87,10 @@ in
 
   programs.nix-ld = {
     enable = true;
-    libraries = with pkgs; [ stdenv.cc.cc.lib zlib ];
+    libraries = with pkgs; [
+      stdenv.cc.cc.lib
+      zlib
+    ];
   };
 
   # Install terminfo entries for all known terminals so SSH sessions from any

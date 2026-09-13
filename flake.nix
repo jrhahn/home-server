@@ -17,7 +17,13 @@
   };
 
   outputs =
-    { self, nixpkgs, nixpkgs-unstable, rs-smarthome-nodes, ... }:
+    {
+      self,
+      nixpkgs,
+      nixpkgs-unstable,
+      rs-smarthome-nodes,
+      ...
+    }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
