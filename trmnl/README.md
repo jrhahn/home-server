@@ -69,18 +69,35 @@ out of the sensor list rather than a list here, so a sixth room simply starts a
 fourth row — `gap` carries both axes because `sanitize.yml` allows it while
 `row-gap` and `grid-gap` are stripped.
 
-Three lines per tile is the budget that makes three rows fit, which is why
-humidity and CO2 share the last line and the two bird counters share theirs.
+Vertical room is the scarce thing here, and the whole column is only as tall as
+its three rows. The tallest tile in a row sets that row, and `Wohnzimmer` — five
+readings — sets the first one, so anything that adds a line to `Wohnzimmer`
+lengthens the column even though four tiles have room to spare. What falls off
+when the column outgrows the screen is its very last line, which is the bird
+counter at the bottom of `Terrasse`: the counter disappearing is the symptom of
+a layout problem two rows above it, not of a counter problem.
 
-The temperature is `value--small`, 26 px against `value--base`'s 38 px. It spent
-a revision at an overridden 22 px, until the layout freed the vertical room to
-put it back. Overriding the size is safe here, unlike with the labels:
-the `value` classes resolve to `--value-font-family: "Inter Variable"`, a
-scalable font, and only `value--xxsmall` is switched to the bitmap `TRMNL16` on
-this model. The `label` classes are the bitmap ones — those must keep their
-native size. The panel's own battery and WiFi sit in
-the grid as a final tile rather than on a divider: as a tile they move down with
-the rooms instead of colliding with them.
+Rendered against the live `/api/states` and measured in a browser at the sizes
+below, the column runs 223 px, against 237 px before any of this. Giving each
+reading its own line had taken it to 263 px, and at that height the screen lost
+both ends — the top of the first row and the bird counter off the bottom of the
+last. It came back in four pieces. Three cost nothing: the temperature at 22 px
+again, 1 px between lines instead of 2, a 4 px row gap instead of 6. The fourth
+is that VOC shares the humidity line, which is the one place the one-line rule
+is broken on purpose — a line off `Wohnzimmer` is a line off the whole column,
+and humidity is the partner that costs no width, since `47 % · VOC 102` stays
+narrower than the particulate line either way.
+
+The temperature is `value--small`, 26 px against `value--base`'s 38 px, and here
+it is overridden back down to 22 px — where it already sat for a revision, for
+this same reason. Overriding the size is safe, unlike with the labels: the
+`value` classes resolve to `--value-font-family: "Inter Variable"`, a scalable
+font, and only `value--xxsmall` is switched to the bitmap `TRMNL16` on this
+model. The `label` classes are the bitmap ones — those must keep their native
+size, which is why the lines were tightened by their margins and not by their
+type. The panel's own battery and WiFi sit in the grid as a final tile rather
+than on a divider: as a tile they move down with the rooms instead of colliding
+with them.
 
 ### Extension
 
@@ -281,9 +298,13 @@ The marks are what let each reading have its own line. Before them the tile
 budget was three lines and pairs shared: humidity with CO2, particulates with
 VOC, two numbers either side of a `·` where you had to know which was which.
 With a mark in front the line says what it is on its own, so the pairs are
-split. The fourth and fifth lines are paid for by the CO2 bar, which is gone —
-the value is in ppm one line up, and all the bar added on top of that was where
-1000 ppm sits.
+split — CO2 off humidity, particulates off VOC. The extra line is paid for by
+the CO2 bar, which is gone: the value is in ppm one line up, and all the bar
+added on top of that was where 1000 ppm sits.
+
+VOC then came back onto the humidity line, for height rather than for sense —
+see below. It keeps its word rather than a mark, so the line still says which
+number is which, which is the part that mattered.
 
 Particulates are spelled out again, `PM2.5 8 · PM10 14`. The short form `PM 8/14`
 existed only because VOC shared that line: written out together they were by a
@@ -295,14 +316,15 @@ instead of wrapping. `PM 8/14 · VOC 102` was 17 characters, exactly what
 `PM2.5 8 · PM10 14` had been before VOC existed, which is the width that
 demonstrably fitted.
 
-Which makes this line the one to watch. With the icon in front it is that proven
-width plus 10 px of mark and 3 px of gap — measured side by side in a browser at
-the same size, 125.6 px against 112.6 px, about a tenth wider than the widest
-line the column has carried. If the left column starts crowding the radar, this
-is the line that did it, and the short form behind the icon is the way back:
-the mark already says "particulates", so `PM 8/14` loses only which number is
-which. Where just one of the two is present it stays spelled out regardless —
-`PM 3` alone does not say which one it is.
+Which makes this line the one to watch, in width the way the first row is the one
+to watch in height. With the icon in front it is that proven width plus 10 px of
+mark and 3 px of gap — measured side by side in a browser at the same size,
+125.6 px against 112.6 px, about a tenth wider than the widest line the column
+has carried. If the left column starts crowding the radar sideways, this is the
+line that did it, and the short form behind the icon is the way back: the mark
+already says "particulates", so `PM 8/14` loses only which number is which.
+Where just one of the two is present it stays spelled out regardless — `PM 3`
+alone does not say which one it is.
 
 The header still reads `außen PM 3/5` in the short form. Comparing the room
 against outdoors is the whole point of measuring particulates indoors, and two

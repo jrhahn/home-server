@@ -307,7 +307,7 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
   {%- comment -%} Linke Spalte: Räume als 2x3-Raster, das Panel selbst als letzte Kachel {%- endcomment -%}
   <span style="display:flex;flex-direction:column;flex:1;min-width:0">
     <span class="label label--underline" style="width:100%">Räume</span>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;margin-top:4px;width:100%">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;margin-top:4px;width:100%">
       {%- for room in rooms -%}
         {%- assign rt = "" -%}{%- assign rh = "" -%}{%- assign rc = "" -%}{%- assign tw = 99 -%}
         {%- assign p25 = "" -%}{%- assign p10 = "" -%}{%- assign vheute = "" -%}{%- assign vtotal = "" -%}
@@ -380,7 +380,7 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
               {%- endif -%}
             </span>
           </span>
-          <span class="value value--small">{% if rt != "" %}{{ rt | round: 1 }}<span style="color:#555555">&deg;</span>{% else %}<span style="color:#555555">&mdash;</span>{% endif %}</span>
+          <span class="value value--small" style="font-size:22px">{% if rt != "" %}{{ rt | round: 1 }}<span style="color:#555555">&deg;</span>{% else %}<span style="color:#555555">&mdash;</span>{% endif %}</span>
           {%- comment -%} Ab hier eine Zeile pro Sensor, jede mit ihrem Zeichen
           davor. Vorher teilten sich Feuchte und CO2 eine Zeile und Partikel und
           VOC eine zweite, um im Drei-Zeilen-Budget zu bleiben; getrennt sagt
@@ -393,14 +393,30 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
           {%- if rt == "" -%}
             <span class="label label--small" style="color:#555555;white-space:nowrap">offline</span>
           {%- else -%}
-            {%- if rh != "" -%}
-              <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:3px;color:#555555;white-space:nowrap;margin-top:2px">
-                <span style="display:inline-block;width:10px;height:10px;flex:none">{{ i_hum }}</span>
-                <span>{{ rh | round }}<span style="color:#555555">&nbsp;%</span></span>
+            {%- comment -%} VOC teilt sich die Zeile mit der Feuchte. Nicht weil
+            das zusammengehört -- es sind zwei Sensoren --, sondern weil die
+            Kachelreihe so hoch ist wie ihre höchste Kachel, und das ist
+            `Wohnzimmer`. Eine Zeile dort ist eine Zeile an der ganzen Spalte,
+            und die Spalte war zwei Zeilen zu hoch für den Screen. Feuchte ist
+            der Partner dafür, weil sie kurz ist: `47 % &middot; VOC 102` bleibt
+            schmaler als die Partikelzeile, kostet also keine Breite.
+
+            Der Tropfen steht nur, wenn es auch Feuchte gibt -- sonst behauptet
+            er sie für eine Zahl, die keine ist {%- endcomment -%}
+            {%- if rh != "" or voc != "" -%}
+              <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:3px;color:#555555;white-space:nowrap;margin-top:1px">
+                {%- if rh != "" -%}
+                  <span style="display:inline-block;width:10px;height:10px;flex:none">{{ i_hum }}</span>
+                {%- endif -%}
+                <span>
+                  {%- if rh != "" -%}{{ rh | round }}<span style="color:#555555">&nbsp;%</span>{%- endif -%}
+                  {%- if rh != "" and voc != "" -%}<span style="color:#AAAAAA">&nbsp;&middot;&nbsp;</span>{%- endif -%}
+                  {%- if voc != "" -%}VOC&nbsp;{{ voc | round }}{%- endif -%}
+                </span>
               </span>
             {%- endif -%}
             {%- if rc != "" -%}
-              <span class="label label--small" style="color:#555555;white-space:nowrap;margin-top:2px">CO&#8322;&nbsp;{{ rc | round }}<span style="color:#555555">&nbsp;ppm</span></span>
+              <span class="label label--small" style="color:#555555;white-space:nowrap;margin-top:1px">CO&#8322;&nbsp;{{ rc | round }}<span style="color:#555555">&nbsp;ppm</span></span>
             {%- endif -%}
           {%- endif -%}
           {%- comment -%} Partikel wieder ausgeschrieben -- `PM2.5 8 &middot; PM10 14`.
@@ -425,7 +441,7 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
           Bei nur einem der beiden Partikelwerte bleibt es ausgeschrieben --
           `PM 3` allein sagt nicht, welcher {%- endcomment -%}
           {%- if p25 != "" or p10 != "" -%}
-            <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:3px;color:#555555;white-space:nowrap;margin-top:2px">
+            <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:3px;color:#555555;white-space:nowrap;margin-top:1px">
               <span style="display:inline-block;width:10px;height:10px;flex:none">{{ i_pm }}</span>
               <span>
                 {%- if p25 != "" -%}PM2.5&nbsp;{{ p25 | round }}{%- endif -%}
@@ -434,14 +450,11 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
               </span>
             </span>
           {%- endif -%}
-          {%- if voc != "" -%}
-            <span class="label label--small" style="color:#555555;white-space:nowrap;margin-top:2px">VOC&nbsp;{{ voc | round }}</span>
-          {%- endif -%}
           {%- if vheute != "" or vtotal != "" -%}
             {%- comment -%} Heute und gesamt bleiben zusammen auf einer Zeile: das
             ist ein Sensor, und der Vogel davor sagt schon, wovon die zwei Zahlen
             handeln -- das Wort "Vögel" kann damit weg {%- endcomment -%}
-            <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:3px;color:#555555;white-space:nowrap;margin-top:2px">
+            <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:3px;color:#555555;white-space:nowrap;margin-top:1px">
               <span style="display:inline-block;width:10px;height:10px;flex:none">{{ i_bird }}</span>
               <span>{% if vheute != "" %}{{ vheute | round }}{% else %}&mdash;{% endif %}<span style="color:#AAAAAA">&nbsp;&middot;&nbsp;</span>{% if vtotal != "" %}{{ vtotal | round }}{% else %}&mdash;{% endif %}</span>
             </span>
