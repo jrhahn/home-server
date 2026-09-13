@@ -40,10 +40,9 @@ in
   # realise arbitrary derivations, which is root in all but name -- and wheel
   # members have sudo already. Handing it to a group that could not otherwise
   # become root would be a different decision entirely.
-  nix.settings.trusted-users = [
-    "root"
-    "@wheel"
-  ];
+  # Only the group: NixOS's own default for this setting is [ "root" ], and the
+  # lists merge, so naming root here again just puts it in nix.conf twice.
+  nix.settings.trusted-users = [ "@wheel" ];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
