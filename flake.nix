@@ -4,10 +4,20 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    # The sensor fleet's own repository, for the module that archives its MQTT
+    # readings into QuestDB (server.smarthomeTimeseries). Fetched from GitHub
+    # rather than from a checkout on the machine: the repository is public, so
+    # this needs no key even when `nixos-rebuild` evaluates as root, and the
+    # module belongs to the fleet rather than to this house.
+    rs-smarthome-nodes = {
+      url = "github:jrhahn/rs-smarthome-nodes/develop";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
-    { self, nixpkgs, nixpkgs-unstable, ... }:
+    { self, nixpkgs, nixpkgs-unstable, rs-smarthome-nodes, ... }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -44,7 +54,10 @@
           ./modules/print-server.nix
           ./modules/reverse-proxy.nix
           ./modules/seafile.nix
+          ./modules/smarthome-timeseries.nix
+          rs-smarthome-nodes.nixosModules.smarthome-timeseries
           ./modules/storage.nix
+          ./modules/trmnl.nix
         ];
       };
 

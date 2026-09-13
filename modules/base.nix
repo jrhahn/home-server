@@ -28,6 +28,22 @@ in
     "flakes"
   ];
 
+  # Let anyone who can already become root push store paths to this machine.
+  #
+  # This is what makes `nixos-rebuild --target-host` work, and the failure
+  # without it is misleading: `--sudo` elevates the *activation*, but the copy
+  # that precedes it runs as the SSH user through the Nix daemon, which rejects
+  # a locally built path with "lacks a signature by a trusted key". It reads
+  # like a signing problem and is a permissions one.
+  #
+  # `@wheel` grants nothing new. A trusted user can have the daemon build and
+  # realise arbitrary derivations, which is root in all but name -- and wheel
+  # members have sudo already. Handing it to a group that could not otherwise
+  # become root would be a different decision entirely.
+  # Only the group: NixOS's own default for this setting is [ "root" ], and the
+  # lists merge, so naming root here again just puts it in nix.conf twice.
+  nix.settings.trusted-users = [ "@wheel" ];
+
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 

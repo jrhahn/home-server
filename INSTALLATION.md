@@ -98,23 +98,27 @@ nix-shell -p git openssl
 ## 3. Clone This Repo and Create Your Private Config
 
 This repo is the shareable module set. Your machine is configured by a separate,
-private flake that imports it. On the new machine:
+private flake that imports it.
+
+Both checkouts can live wherever you keep your repos. The commands below write
+`<home-server-checkout>` and `<your-private-config>` for the two locations —
+substitute your own paths throughout. On the new machine:
 
 ```bash
 # the shareable repo (for scripts and as the flake input)
-git clone <this-repo-url> ~/home-server
+git clone <this-repo-url> <home-server-checkout>
 
 # your private config, from the template
-mkdir ~/home-server-private && cd ~/home-server-private
-cp ~/home-server/example/flake.nix .
-cp ~/home-server/example/local.nix .
+mkdir <your-private-config> && cd <your-private-config>
+cp <home-server-checkout>/example/flake.nix .
+cp <home-server-checkout>/example/local.nix .
 ```
 
 In `flake.nix`, point `home-server.url` at the shared repo. For a local-only
 setup you can use the checkout directly:
 
 ```nix
-home-server.url = "git+file:///home/admin/home-server";
+home-server.url = "git+file://<home-server-checkout>";  # must be an absolute path
 ```
 
 ## 4. Generate Hardware Config
@@ -122,13 +126,13 @@ home-server.url = "git+file:///home/admin/home-server";
 Into your **private** config:
 
 ```bash
-cd ~/home-server-private
+cd <your-private-config>
 sudo nixos-generate-config --show-hardware-config > hardware-configuration.nix
 ```
 
 ## 5. Edit Server Settings
 
-Edit `~/home-server-private/local.nix`:
+Edit `<your-private-config>/local.nix`:
 
 - set `server.adminSshKeys` to your SSH public key(s); SSH is enabled in
   `modules/base.nix`, but password login is disabled in the final config
@@ -144,7 +148,7 @@ again.
 ## 6. Create Secrets
 
 ```bash
-~/home-server/scripts/create-seafile-secrets.sh
+<home-server-checkout>/scripts/create-seafile-secrets.sh
 ```
 
 ## 7. Apply NixOS Config
@@ -153,7 +157,7 @@ This applies the home-server config, including Git, German keyboard layout, zsh,
 and a default Oh My Zsh setup for the `admin` user.
 
 ```bash
-sudo nixos-rebuild switch --flake ~/home-server-private#family-server
+sudo nixos-rebuild switch --flake <your-private-config>#family-server
 ```
 
 ## 8. Initialize Backups
@@ -169,7 +173,7 @@ the laptop to the server. Run this on the laptop from the directory containing
 `.ha-import`:
 
 ```bash
-scp -r .ha-import admin@<server-ip>:~/home-server/
+scp -r .ha-import admin@<server-ip>:<home-server-checkout>/
 ```
 
 Skip this step for a fresh Home Assistant setup.

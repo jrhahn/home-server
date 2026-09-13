@@ -20,7 +20,15 @@ let
     "/srv/seafile-mysql"
     "/srv/seafile-redis"
   ]
-  ++ lib.optionals server.paperless.enable [ "/srv/paperless" ];
+  ++ lib.optionals server.paperless.enable [ "/srv/paperless" ]
+  ++ lib.optionals server.trmnl.enable [ "/srv/trmnl" ]
+  # The sensor archive. Unlike every other database here it is not dumped to a
+  # file first: QuestDB's answer to "back me up while I run" is a checkpoint,
+  # which holds the data directory still while it is copied and costs no second
+  # copy on disk. See `questdbCheckpoint` below.
+  ++ lib.optionals server.smarthomeTimeseries.enable [
+    config.services.smarthome-timeseries.questdb.dataDir
+  ];
   haPaths = [ "/srv/home-assistant" ];
   familyExclude = [
     # Seafile's Redis rewrites its append-only file while borg reads it, which
@@ -29,7 +37,21 @@ let
     # MariaDB dump under /srv/backups/database-dumps.
     "pp:/srv/seafile-redis/appendonlydir"
   ]
-  ++ lib.optionals server.paperless.enable [ "pp:/srv/paperless/log" ];
+  ++ lib.optionals server.paperless.enable [ "pp:/srv/paperless/log" ]
+  # Terminus' PostgreSQL writes here continuously; the consistent copy is the
+  # dump under /srv/backups/database-dumps, so the raw cluster is skipped.
+  ++ lib.optionals server.trmnl.enable [ "pp:/srv/trmnl/database" ];
+  # Copying a running QuestDB is a coin flip -- its write-ahead log may be
+  # mid-apply -- so the copy happens between these two. `CHECKPOINT CREATE`
+  # freezes the data directory; `CHECKPOINT RELEASE` lets it move again. (The
+  # older spelling, `SNAPSHOT PREPARE`/`COMPLETE`, still works on 9.3.)
+  questdbSql = sql: ''
+    ${pkgs.curl}/bin/curl -fsS --get \
+      "http://${config.services.smarthome-timeseries.questdb.httpEndpoint}/exec" \
+      --data-urlencode "query=${sql}" >/dev/null
+  '';
+  questdbRelease = questdbSql "CHECKPOINT RELEASE";
+
   hetznerCommon = {
     compression = "zstd,6";
     encryption = {
@@ -52,7 +74,7 @@ in
 lib.mkMerge [
 {
   systemd.services.dump-family-service-databases = {
-    description = "Dump Seafile, Immich, and (when enabled) Paperless databases";
+    description = "Dump Seafile, Immich, and (when enabled) Paperless and Terminus databases";
     startAt = "03:15";
     serviceConfig = {
       Type = "oneshot";
@@ -76,6 +98,12 @@ lib.mkMerge [
           --databases ccnet_db seafile_db seahub_db > "$out/seafile.sql"
       fi
 
+${lib.optionalString server.trmnl.enable ''
+      if ${pkgs.podman}/bin/podman ps --format '{{.Names}}' | ${pkgs.gnugrep}/bin/grep -qx trmnl-database; then
+        ${pkgs.podman}/bin/podman exec trmnl-database \
+          pg_dump --username=terminus terminus > "$out/terminus.sql"
+      fi
+''}
       ${pkgs.util-linux}/bin/runuser -u immich -- \
         ${config.services.postgresql.package}/bin/pg_dump immich > "$out/immich.sql"
 ${lib.optionalString server.paperless.enable ''
@@ -85,6 +113,27 @@ ${lib.optionalString server.paperless.enable ''
       ${pkgs.findutils}/bin/find /srv/backups/database-dumps -mindepth 1 -maxdepth 1 -type d -mtime +14 -exec ${pkgs.coreutils}/bin/rm -rf {} +
     '';
   };
+
+}
+
+{
+  # The release is wired to ExecStopPost rather than to the job's postHook, and
+  # that is the point of it: postHook does not run when borg fails, and a
+  # checkpoint left held makes QuestDB keep every write-ahead segment from then
+  # on -- a disk filling up days later, for a reason nobody connects to a backup
+  # that failed one night. ExecStopPost runs either way, and releasing when
+  # nothing is held answers OK, so the safety net costs nothing.
+  systemd.services = lib.mkIf server.smarthomeTimeseries.enable (
+    lib.genAttrs
+      (
+        [ "borgbackup-job-family-local" ]
+        ++ lib.optional hetzner.enable "borgbackup-job-family-hetzner"
+      )
+      (_: {
+        serviceConfig.ExecStopPost =
+          pkgs.writeShellScript "questdb-checkpoint-release" questdbRelease;
+      })
+  );
 
   services.borgbackup.jobs = {
     family-local = {
@@ -101,6 +150,7 @@ ${lib.optionalString server.paperless.enable ''
       };
       preHook = ''
         ${pkgs.systemd}/bin/systemctl start dump-family-service-databases.service
+        ${lib.optionalString server.smarthomeTimeseries.enable (questdbSql "CHECKPOINT CREATE")}
       '';
     };
 
@@ -131,6 +181,7 @@ ${lib.optionalString server.paperless.enable ''
       exclude = familyExclude;
       preHook = ''
         ${pkgs.systemd}/bin/systemctl start dump-family-service-databases.service
+        ${lib.optionalString server.smarthomeTimeseries.enable (questdbSql "CHECKPOINT CREATE")}
       '';
     };
 

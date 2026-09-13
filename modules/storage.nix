@@ -38,5 +38,6 @@
     server.homeAssistantDomain
     server.photosDomain
   ]
-  ++ lib.optional server.paperless.enable server.paperlessDomain;
+  ++ lib.optional server.paperless.enable server.paperlessDomain
+  ++ lib.optional server.trmnl.enable server.trmnlDomain;
 }
