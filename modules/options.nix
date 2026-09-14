@@ -63,7 +63,7 @@ in
     };
     timeseriesDomain = mkOption {
       type = types.str;
-      default = "verlauf.home.arpa";
+      default = "iot.home.arpa";
     };
 
     enablePublicTls = mkOption {

@@ -39,5 +39,12 @@
     server.photosDomain
   ]
   ++ lib.optional server.paperless.enable server.paperlessDomain
-  ++ lib.optional server.trmnl.enable server.trmnlDomain;
+  ++ lib.optional server.trmnl.enable server.trmnlDomain
+  # Missing until 2026-09-14, and the symptom was confusing: the AdGuard rewrite
+  # for this domain had been in place since the archiver landed, so the name
+  # worked from nothing at all -- not from the server, and not from any client,
+  # because what actually answers these names is this file by way of AdGuard,
+  # not the rewrite list. A service can be deployed, proxied and running and
+  # still be unreachable by name.
+  ++ lib.optional server.smarthomeTimeseries.enable server.timeseriesDomain;
 }
