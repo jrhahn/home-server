@@ -144,10 +144,14 @@ Log in with the normal user account.
 ## Laptop DNS Note
 
 If Fedora says `Could not resolve host: cloud.home.arpa` but the server works,
-add the Tailscale address to `/etc/hosts` on the laptop:
+the Tailscale DNS setup (INSTALLATION.md step 12) is the thing to fix. As a
+local workaround, pin the names in `/etc/hosts` on the laptop — run this with
+the server's own Tailscale address, which `tailscale ip -4` prints on the
+server:
 
 ```bash
-sudo sh -c 'grep -q "cloud.home.arpa" /etc/hosts || printf "\n# home-server over Tailscale\n100.64.0.1 family-server cloud.home.arpa photos.home.arpa ha.home.arpa\n" >> /etc/hosts'
+SERVER_IP=100.x.y.z
+sudo sh -c "grep -q 'cloud.home.arpa' /etc/hosts || printf '\n# home-server over Tailscale\n$SERVER_IP family-server cloud.home.arpa photos.home.arpa ha.home.arpa\n' >> /etc/hosts"
 sudo resolvectl flush-caches
 ```
 

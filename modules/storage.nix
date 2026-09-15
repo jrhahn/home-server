@@ -1,4 +1,4 @@
-{ lib, server, ... }:
+{ server, ... }:
 
 {
   systemd.tmpfiles.rules = [
@@ -31,20 +31,11 @@
     "d /srv/backups/database-dumps 0750 root root -"
   ];
 
-  networking.hosts.${server.tailscaleAddress} = [
-    server.adguardDomain
-    server.cloudDomain
-    server.gitDomain
-    server.homeAssistantDomain
-    server.photosDomain
-  ]
-  ++ lib.optional server.paperless.enable server.paperlessDomain
-  ++ lib.optional server.trmnl.enable server.trmnlDomain
-  # Missing until 2026-09-14, and the symptom was confusing: the AdGuard rewrite
-  # for this domain had been in place since the archiver landed, so the name
-  # worked from nothing at all -- not from the server, and not from any client,
-  # because what actually answers these names is this file by way of AdGuard,
-  # not the rewrite list. A service can be deployed, proxied and running and
-  # still be unreachable by name.
-  ++ lib.optional server.smarthomeTimeseries.enable server.timeseriesDomain;
+  # What actually answers these names, by way of AdGuard. Shared with the
+  # rewrite list via modules/options.nix so a domain can no longer be in one and
+  # missing from the other -- the failure the timeseries console hit on
+  # 2026-09-14, where the rewrite existed, nginx proxied it, and the name still
+  # resolved from nowhere at all. The rewrite list looks like the relevant place
+  # and is not.
+  networking.hosts.${server.tailscaleAddress} = server.localDomains;
 }

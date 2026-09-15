@@ -66,6 +66,33 @@ in
       default = "iot.home.arpa";
     };
 
+    localDomains = mkOption {
+      type = types.listOf types.str;
+      internal = true;
+      readOnly = true;
+      default = [
+        cfg.adguardDomain
+        cfg.cloudDomain
+        cfg.gitDomain
+        cfg.homeAssistantDomain
+        cfg.photosDomain
+      ]
+      ++ lib.optional cfg.paperless.enable cfg.paperlessDomain
+      ++ lib.optional cfg.trmnl.enable cfg.trmnlDomain
+      ++ lib.optional cfg.smarthomeTimeseries.enable cfg.timeseriesDomain;
+      description = ''
+        Every hostname this server answers to, derived once so the two places
+        that resolve them cannot drift apart: the AdGuard rewrites handed to
+        tailnet clients (modules/adguard-home.nix) and the server's own
+        /etc/hosts entries (modules/storage.nix). Each kept its own
+        hand-maintained copy until 2026-09-15, which is twice now that one of
+        them went missing a domain -- the timeseries console out of
+        /etc/hosts, Paperless out of the rewrites. Optional services contribute
+        a domain only once enabled, matching the `lib.mkIf cfg.enable` guarding
+        their vhost.
+      '';
+    };
+
     enablePublicTls = mkOption {
       type = types.bool;
       default = false;

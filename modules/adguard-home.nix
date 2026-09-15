@@ -1,6 +1,5 @@
 {
   config,
-  lib,
   server,
   ...
 }:
@@ -32,38 +31,15 @@
 
       filtering = {
         protection_enabled = true;
-        rewrites = [
-          {
-            domain = server.adguardDomain;
-            answer = server.tailscaleAddress;
-          }
-          {
-            domain = server.cloudDomain;
-            answer = server.tailscaleAddress;
-          }
-          {
-            domain = server.gitDomain;
-            answer = server.tailscaleAddress;
-          }
-          {
-            domain = server.homeAssistantDomain;
-            answer = server.tailscaleAddress;
-          }
-          {
-            domain = server.photosDomain;
-            answer = server.tailscaleAddress;
-          }
-        ]
-        # Admin UI only. The e-paper device is not on the tailnet and reaches
-        # Terminus over the LAN via server.trmnl.apiUri instead.
-        ++ lib.optional server.trmnl.enable {
-          domain = server.trmnlDomain;
+        # Every local hostname resolves to this server. The list itself lives in
+        # modules/options.nix so /etc/hosts cannot answer for a name this does
+        # not. For TRMNL that covers the admin UI only -- the e-paper device is
+        # not on the tailnet and reaches Terminus over the LAN via
+        # server.trmnl.apiUri instead.
+        rewrites = map (domain: {
+          inherit domain;
           answer = server.tailscaleAddress;
-        }
-        ++ lib.optional server.smarthomeTimeseries.enable {
-          domain = server.timeseriesDomain;
-          answer = server.tailscaleAddress;
-        };
+        }) server.localDomains;
       };
     };
   };

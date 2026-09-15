@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="442" viewBox="0 0 520 442" role="img" aria-labelledby="title desc">
+  <title id="title">Tailscale add nameserver dialog for AdGuard as global resolver</title>
+  <desc id="desc">A Tailscale Add nameserver dialog with the server's Tailscale IP as the nameserver, the Restrict to domain split-DNS toggle switched off, and exit node usage disabled.</desc>
+  <rect width="520" height="442" fill="#f7f7f8"/>
+  <rect x="10" y="8" width="500" height="426" rx="4" fill="#ffffff"/>
+
+  <text x="30" y="42" fill="#222222" font-family="Arial, sans-serif" font-size="18" font-weight="700">Add nameserver</text>
+  <text x="482" y="42" fill="#222222" font-family="Arial, sans-serif" font-size="26" text-anchor="middle">x</text>
+
+  <text x="30" y="92" fill="#222222" font-family="Arial, sans-serif" font-size="15">Nameserver</text>
+  <text x="30" y="116" fill="#6f6f76" font-family="Arial, sans-serif" font-size="14">Use this IPv4 or IPv6 address to resolve names.</text>
+  <rect x="30" y="126" width="462" height="36" rx="5" fill="#ffffff" stroke="#d4d4da"/>
+  <text x="43" y="150" fill="#93939b" font-family="Arial, sans-serif" font-size="16" font-style="italic">your server's Tailscale IP (tailscale ip -4)</text>
+
+  <text x="30" y="212" fill="#222222" font-family="Arial, sans-serif" font-size="15">Restrict to domain</text>
+  <rect x="161" y="195" width="72" height="22" rx="4" fill="#f1f1f3"/>
+  <text x="171" y="211" fill="#5f6067" font-family="Arial, sans-serif" font-size="12">Split DNS</text>
+  <text x="30" y="232" fill="#6f6f76" font-family="Arial, sans-serif" font-size="14">This nameserver will only be used for some domains.</text>
+  <rect x="445" y="200" width="48" height="25" rx="13" fill="#d0d0d4"/>
+  <circle cx="458" cy="212.5" r="10" fill="#ffffff"/>
+  <text x="30" y="256" fill="#b4443c" font-family="Arial, sans-serif" font-size="13">Leave this off -- Android cannot route DNS per domain.</text>
+
+  <text x="30" y="305" fill="#222222" font-family="Arial, sans-serif" font-size="15">Use with exit node</text>
+  <rect x="159" y="288" width="105" height="22" rx="4" fill="#f1f1f3"/>
+  <text x="169" y="304" fill="#5f6067" font-family="Arial, sans-serif" font-size="12">Use with exit node</text>
+  <text x="30" y="325" fill="#6f6f76" font-family="Arial, sans-serif" font-size="14">This nameserver will continue to be used when an exit node is</text>
+  <text x="30" y="346" fill="#6f6f76" font-family="Arial, sans-serif" font-size="14">selected.</text>
+  <rect x="445" y="289" width="48" height="25" rx="13" fill="#d0d0d4"/>
+  <circle cx="458" cy="301.5" r="10" fill="#ffffff"/>
+
+  <rect x="333" y="378" width="72" height="36" rx="5" fill="#ffffff" stroke="#d0d0d4"/>
+  <text x="369" y="401" fill="#303036" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">Cancel</text>
+  <rect x="421" y="378" width="72" height="36" rx="5" fill="#4d6fd2"/>
+  <text x="457" y="401" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" text-anchor="middle">Save</text>
+</svg>

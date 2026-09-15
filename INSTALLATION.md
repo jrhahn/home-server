@@ -194,17 +194,40 @@ sudo tailscale up
 
 ## 12. Configure Tailscale DNS
 
-The server runs AdGuard Home as an internal DNS server on Tailscale. It resolves
-the local service names to the server's Tailscale IP:
+The server runs AdGuard Home as the DNS server for the whole tailnet. It answers
+for the local service names (`cloud.home.arpa`, `ha.home.arpa`,
+`photos.home.arpa` and the rest of the list under step 13) with the server's
+Tailscale IP, and forwards everything else to Quad9 and Cloudflare over DNS-over-
+HTTPS, applying its filter lists on the way.
 
-- `cloud.home.arpa`
-- `ha.home.arpa`
-- `photos.home.arpa`
+Find the address to enter:
 
-In the Tailscale admin console, add `100.64.0.1` as a restricted/split DNS
-nameserver for the `home.arpa` domain. Keep MagicDNS enabled.
+```bash
+tailscale ip -4
+```
 
-![Tailscale split DNS settings for home.arpa](docs/assets/tailscale-split-dns.svg)
+In the Tailscale admin console under **DNS**, add that address as a **global**
+nameserver, leave **Restrict to domain** (split DNS) switched **off**, and keep
+MagicDNS enabled.
+
+![Tailscale nameserver settings with split DNS off](docs/assets/tailscale-global-dns.svg)
+
+Do not configure this as a split-DNS nameserver for `home.arpa`, however much
+more targeted that sounds. Android's `VpnService` API cannot route DNS per
+domain: the client installs `100.100.100.100` as the tunnel's only resolver,
+which answers split-DNS names itself and forwards the rest to the tailnet's
+global nameservers. With no global nameserver configured it has nowhere to
+forward to and cannot reliably fall back to the underlying network's resolvers,
+so on a phone every public domain stops resolving while `home.arpa` keeps
+working. Desktop clients implement real split DNS and hide the problem.
+
+Making AdGuard the global resolver avoids that entirely, and the filter lists
+then apply to all traffic from tailnet devices rather than just the handful of
+`home.arpa` lookups.
+
+The trade-off: DNS for connected devices now depends on this server. If it is
+down, public name resolution is down too for anyone on the tailnet until
+Tailscale falls back.
 
 After this, phones and laptops connected to Tailscale can resolve the local
 service names (the URLs are listed under step 13).
