@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Overview of all running Claude Code sessions.
+#   claude-sessions            -> plain, one line per session
+#   claude-sessions --waybar   -> single-line JSON for a Waybar custom module
+#
+# Reads state files written by session-status.sh.
+# Sessions untouched for >8h are treated as stale and ignored.
+
+dir="${XDG_RUNTIME_DIR:-/tmp}/claude-sessions"
+now="$(date +%s)"
+max_age=$((8 * 3600))
+
+shopt -s nullglob
+entries=()
+n_work=0 n_wait=0 n_idle=0
+if [ -d "$dir" ]; then
+  for f in "$dir"/*; do
+    IFS=$'\t' read -r state repo cwd ts < "$f" 2>/dev/null
+    [ -z "$state" ] && continue
+    [ -n "$ts" ] && [ $((now - ts)) -gt "$max_age" ] && continue
+    case "$state" in
+      working) icon="⚙"; n_work=$((n_work+1)) ;;
+      waiting) icon="❗"; n_wait=$((n_wait+1)) ;;
+      idle)    icon="✓"; n_idle=$((n_idle+1)) ;;
+      *)       icon="·" ;;
+    esac
+    entries+=("$icon $repo")
+  done
+fi
+
+if [ "${1:-}" = "--i3status" ]; then
+  # i3status-rust custom block with `json = true`.
+  if [ "${#entries[@]}" -eq 0 ]; then
+    printf '{"text":"","state":"Idle"}\n'; exit 0
+  fi
+  if [ "$n_wait" -gt 0 ]; then
+    st="Critical"; txt="❗$n_wait"; [ "$n_work" -gt 0 ] && txt="$txt ⚙$n_work"
+  elif [ "$n_work" -gt 0 ]; then
+    st="Info"; txt="⚙$n_work"
+  else
+    st="Idle"; txt="✓$n_idle"
+  fi
+  printf '{"text":" %s ","state":"%s"}\n' "$txt" "$st"
+  exit 0
+fi
+
+if [ "${1:-}" = "--waybar" ]; then
+  total=${#entries[@]}
+  if [ "$total" -eq 0 ]; then
+    printf '{"text":"","tooltip":"keine Claude-Sessions","class":"none"}\n'
+    exit 0
+  fi
+  # Waybar shows the important counts; class = worst state for styling.
+  text="🤖 $total"
+  [ "$n_wait" -gt 0 ] && text="❗$n_wait  ⚙$n_work"
+  if [ "$n_wait" -gt 0 ]; then cls="waiting"; elif [ "$n_work" -gt 0 ]; then cls="working"; else cls="idle"; fi
+  tip=$(printf '%s\\n' "${entries[@]}")
+  tip="${tip%\\n}"
+  printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' "$text" "$tip" "$cls"
+  exit 0
+fi
+
+if [ "${#entries[@]}" -eq 0 ]; then
+  echo "keine Claude-Sessions"
+  exit 0
+fi
+printf '%s\n' "${entries[@]}"

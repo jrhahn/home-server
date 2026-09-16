@@ -49,6 +49,7 @@
           ./modules/system.nix
           ./modules/adguard-home.nix
           ./modules/base.nix
+          ./modules/claude-code.nix
           ./modules/docker.nix
           ./modules/external-storage.nix
           ./modules/forgejo.nix

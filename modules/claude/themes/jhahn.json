@@ -1,0 +1,8 @@
+{
+  "name": "Jhahn (gruener Prompt)",
+  "base": "dark",
+  "overrides": {
+    "userMessageBackground": "rgb(0,140,45)",
+    "userMessageBackgroundHover": "rgb(0,175,58)"
+  }
+}

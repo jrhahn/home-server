@@ -1,0 +1,74 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  },
+  "model": "opus[1m]",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/session-status.sh idle"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/session-status.sh working"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/prompt-timestamp.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/session-status.sh waiting"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/session-status.sh idle"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/session-status.sh end"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "@homeDir@/.claude/hooks/statusline.sh",
+    "padding": 0,
+    "refreshInterval": 2
+  },
+  "tui": "fullscreen",
+  "theme": "custom:jhahn",
+  "showMessageTimestamps": true,
+  "skipAutoPermissionPrompt": true
+}
