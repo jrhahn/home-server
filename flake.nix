@@ -64,6 +64,7 @@
           ./modules/smarthome-timeseries.nix
           rs-smarthome-nodes.nixosModules.smarthome-timeseries
           ./modules/storage.nix
+          ./modules/time-server.nix
           ./modules/trmnl.nix
         ];
       };
