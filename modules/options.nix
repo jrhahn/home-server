@@ -79,7 +79,8 @@ in
       ]
       ++ lib.optional cfg.paperless.enable cfg.paperlessDomain
       ++ lib.optional cfg.trmnl.enable cfg.trmnlDomain
-      ++ lib.optional cfg.smarthomeTimeseries.enable cfg.timeseriesDomain;
+      ++ lib.optional cfg.smarthomeTimeseries.enable cfg.timeseriesDomain
+      ++ lib.optional cfg.firmwareServer.enable cfg.firmwareServer.domain;
       description = ''
         Every hostname this server answers to, derived once so the two places
         that resolve them cannot drift apart: the AdGuard rewrites handed to
@@ -183,6 +184,49 @@ in
         description = ''
           Tesseract OCR language(s); the matching language packs are installed
           automatically. Combine with '+', most-used first.
+        '';
+      };
+    };
+
+    firmwareServer = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Serve firmware images to the sensor fleet over plain HTTP, so a node
+          can update itself over the air instead of being reached with a cable.
+
+          The images are static files under `root`; what makes an update happen
+          is a retained MQTT message naming a version, a URL and a SHA-256 (see
+          docs/ota.md in rs-smarthome-nodes). Nothing here publishes that
+          message, and nothing here builds an image — this is a directory and a
+          vhost, and that is the whole of it.
+        '';
+      };
+      domain = mkOption {
+        type = types.str;
+        default = "fw.home.arpa";
+        description = "Hostname the images are served under.";
+      };
+      addresses = mkOption {
+        type = types.listOf types.str;
+        default = [ ];
+        example = [ "192.168.1.67" ];
+        description = ''
+          Extra `server_name` entries for clients that address this machine by
+          IP. The sensor nodes are exactly that: they carry no DNS resolver, so
+          they send the dotted quad as their `Host` header, which matches no
+          named vhost. Leave empty and the nodes get whichever vhost nginx
+          happens to treat as the default — which is not this one.
+        '';
+      };
+      root = mkOption {
+        type = types.str;
+        default = "/var/lib/smarthome-firmware";
+        description = ''
+          Directory served at `/fw/`, owned by `adminUser` so images can be
+          copied in over SSH without root. Put an image here and it is
+          fetchable; nothing prunes it.
         '';
       };
     };

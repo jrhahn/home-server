@@ -52,6 +52,7 @@
           ./modules/claude-code.nix
           ./modules/docker.nix
           ./modules/external-storage.nix
+          ./modules/firmware-server.nix
           ./modules/forgejo.nix
           ./modules/home-assistant.nix
           ./modules/immich.nix
