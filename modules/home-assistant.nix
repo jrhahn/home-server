@@ -12,29 +12,36 @@ let
   # ignored, which reads as "the automation does nothing" rather than as an
   # error.
   #
-  # These are HA's own entity slugs, so they change when a device is renamed in
-  # the UI. If one light stops following the schedule, check Developer Tools ->
-  # States before suspecting the automation.
+  # The entity ids are HA's own slugs and were never renamed along with the
+  # friendly names, so the friendly name is given here for each: the ids alone
+  # are unreadable, and renaming a device in the UI does not change them.
+  #
+  # Deliberately absent: light.ldvsmart_pla45x45t ("Küche - Decke", the LEDVANCE
+  # Planon panel). It is a tunable-white luminaire, but localtuya exposes it as
+  # `supported_color_modes: [onoff]` -- Home Assistant can currently only switch
+  # it, not dim or tint it. Worth revisiting after the localtuya fork is
+  # updated, at which point it belongs in this list.
   tunableLights = [
-    "light.arbeitsecke"
-    "light.test_led_stripe"
-    "light.tz3210_xwqng7ol_ts0502b"
-    "light.tz3210_xwqng7ol_ts0502b_2"
-    "light.flur_decke"
+    "light.arbeitsecke" # "Arbeitsecke" (ZHA)
+    "light.test_led_stripe" # "Küche LED Streifen" -- the id is a misnomer, this is not a test rig
+    "light.tz3210_xwqng7ol_ts0502b" # "LED Streifen" (ZHA)
+    "light.tz3210_xwqng7ol_ts0502b_2" # "Lampe Fototapete" (ZHA)
+    "light.flur_decke" # "Flur - Decke" (localtuya)
   ];
 
-  # The daily curve. Written as a single-line Jinja expression (not an
-  # {% if %} block) so it renders to a native int rather than to a string with
-  # stray newlines around it.
+  # The daily curve. Written as a single-line Jinja expression rather than an
+  # {% if %} block so it renders to a native int instead of a string with stray
+  # newlines around it.
   #
-  # The forenoon block is the whole point of this: a shaded ground-floor flat
-  # measures ~100 lux where the circadian consensus asks for ~250 lux melanopic
-  # EDI -- roughly 300-400 lux vertically at the eye -- so mornings run at the
-  # top of the colour range and at full output. The evening ramp is the other
-  # half; bright 5000 K at 22:00 is the part that costs sleep.
+  # The forenoon block is the whole point of this: the flat is a shaded ground
+  # floor and measures around 100 lux where the circadian consensus asks for
+  # roughly 250 lux melanopic EDI -- about 300-400 lux vertically at the eye --
+  # so mornings run at the top of the colour range and at full output. The
+  # evening ramp is the other half; bright 5000 K at 22:00 is the part that
+  # costs sleep.
   #
-  # Kelvin outside a lamp's own range is clamped by HA, so the 2200 K night step
-  # is safe even on strips that bottom out at 2700 K.
+  # Kelvin outside a lamp's own range is clamped by Home Assistant, so the
+  # 2200 K night step is safe on any of these (they all report 2000-6535 K).
   kelvinExpr = "{% set h = now().hour %}{{ 2200 if h < 6 else 5000 if h < 11 else 4500 if h < 15 else 4000 if h < 19 else 3000 if h < 22 else 2200 }}";
 
   brightnessExpr = "{% set h = now().hour %}{{ 20 if h < 6 else 100 if h < 15 else 80 if h < 19 else 60 if h < 22 else 30 }}";
@@ -97,33 +104,31 @@ in
       # them, which is why the e-ink panel kept saying "Meisenknödel" -- the
       # name was ours, not the node's.
 
-      # Tageszeitabhängige Lichtfarbe.
+      # Time-of-day colour temperature.
       #
-      # Der Punkt ist nicht der Zeitplan, sondern dass er der *Standardzustand*
-      # ist: wer vormittags Licht anmacht, bekommt 5000 K bei voller Helligkeit,
-      # ohne etwas zu entscheiden. Eine Lichtdosis, die eine Handlung verlangt,
-      # wird nicht genommen -- das ist der Grund, warum hier eine Automation
-      # steht und keine Therapielampe im Regal.
+      # The point is not the schedule but that it is the *default state* of the
+      # lamps: switching a light on before 11:00 gives 5000 K at full output
+      # without anyone deciding anything. A light dose that requires a decision
+      # does not get taken -- which is why this is an automation and not a
+      # therapy lamp on a shelf.
       #
-      # Zwei Automationen, weil sie sich bewusst unterschiedlich verhalten:
+      # Two automations, because they must behave differently:
       #
-      #   1. Beim Einschalten: Farbtemperatur *und* Helligkeit setzen. Die Lampe
-      #      war aus, es gibt keinen manuellen Zustand, den man zerstören
-      #      könnte.
-      #   2. An den Tagesgrenzen: nur die Farbtemperatur nachziehen. Ein von
-      #      Hand gedimmtes Licht soll um 15:00 nicht plötzlich wieder
-      #      aufreißen.
+      #   1. On switch-on: set colour temperature *and* brightness. The lamp was
+      #      off, so there is no manual state to destroy.
+      #   2. At the day boundaries: follow the colour temperature only. A
+      #      hand-dimmed light should not blare back to full at 15:00.
       #
-      # `from = "off"` im Trigger ist nicht kosmetisch: ohne das feuert jede
-      # Attributänderung -- auch die, die die Automation selbst auslöst -- und
-      # sie dreht sich im Kreis.
+      # `from = "off"` in the trigger is not cosmetic: without it every
+      # attribute change re-fires the automation -- including the change the
+      # automation itself causes -- and it loops.
       automation = [
         {
           id = "licht_tagesfarbe_beim_einschalten";
           alias = "Licht: Tagesfarbe beim Einschalten";
-          description = "Setzt Farbtemperatur und Helligkeit passend zur Tageszeit, sobald eine Lampe angeht.";
-          # Mehrere Lampen können gleichzeitig angehen (Gruppenschalter, Szene);
-          # queued statt single, damit keine davon verschluckt wird.
+          description = "Sets colour temperature and brightness to match the time of day whenever a lamp comes on.";
+          # Several lamps can come on at once (group switch, scene); queued
+          # rather than single so none of them is dropped.
           mode = "queued";
           max = 10;
           triggers = [
@@ -148,14 +153,14 @@ in
         {
           id = "licht_tagesfarbe_nachziehen";
           alias = "Licht: Tagesfarbe nachziehen";
-          description = "Zieht an den Tagesgrenzen nur die Farbtemperatur nach, ohne die Helligkeit anzufassen.";
+          description = "Follows the colour temperature at the day boundaries without touching brightness.";
           mode = "single";
           triggers = [
             {
               trigger = "time";
-              # Die Grenzen der Kurve in kelvinExpr. Werden die dort geändert,
-              # gehören sie hier mit geändert, sonst springt die Farbe erst bei
-              # der nächsten Grenze.
+              # The boundaries of the curve in kelvinExpr. Change them there and
+              # they have to change here too, or the colour only catches up at
+              # the next boundary.
               at = [
                 "06:00:00"
                 "11:00:00"
@@ -167,8 +172,8 @@ in
           ];
           actions = [
             {
-              # Eine leere Liste ist ein No-op, deshalb braucht es keine
-              # Bedingung "es brennt überhaupt Licht".
+              # An empty list is a no-op, so this needs no "is any light on"
+              # condition.
               action = "light.turn_on";
               target.entity_id = litLightsExpr;
               data.kelvin = kelvinExpr;
