@@ -29,25 +29,31 @@ let
     "light.flur_decke" # "Flur - Decke" (localtuya)
   ];
 
-  # The daily curve. Written as a single-line Jinja expression rather than an
-  # {% if %} block so it renders to a native int instead of a string with stray
-  # newlines around it.
+  # The daily colour temperature curve.
   #
-  # The forenoon block is the whole point of this: the flat is a shaded ground
-  # floor and measures around 100 lux where the circadian consensus asks for
-  # roughly 250 lux melanopic EDI -- about 300-400 lux vertically at the eye --
-  # so mornings run at the top of the colour range and at full output. The
-  # evening ramp is the other half; bright 5000 K at 22:00 is the part that
-  # costs sleep.
+  # Brightness is deliberately not part of this. Switching on, switching off and
+  # dimming are done by hand; the only thing that follows the clock is the
+  # colour. Nothing here ever turns a lamp on -- see the automations below.
+  #
+  # Expressed in minutes since midnight rather than in whole hours so the
+  # boundaries can sit anywhere; `7*60+30` for half past seven is a one-token
+  # change. Kept as a single-line Jinja expression rather than an {% if %} block
+  # so it renders to a native int instead of a string with stray newlines.
+  #
+  # The forenoon block is the point of the whole file: the flat is a shaded
+  # ground floor and measures around 100 lux where the circadian consensus asks
+  # for roughly 250 lux melanopic EDI -- about 300-400 lux vertically at the eye
+  # -- so from 07:00 the colour sits at the top of the range. The evening ramp is
+  # the other half; 5000 K at 22:00 is the part that costs sleep.
   #
   # Kelvin outside a lamp's own range is clamped by Home Assistant, so the
   # 2200 K night step is safe on any of these (they all report 2000-6535 K).
-  kelvinExpr = "{% set h = now().hour %}{{ 2200 if h < 6 else 5000 if h < 11 else 4500 if h < 15 else 4000 if h < 19 else 3000 if h < 22 else 2200 }}";
+  kelvinExpr = "{% set m = now().hour * 60 + now().minute %}{{ 2200 if m < 7*60 else 5000 if m < 11*60 else 4500 if m < 15*60 else 4000 if m < 19*60 else 3000 if m < 22*60 else 2200 }}";
 
-  brightnessExpr = "{% set h = now().hour %}{{ 20 if h < 6 else 100 if h < 15 else 80 if h < 19 else 60 if h < 22 else 30 }}";
-
-  # The subset of the above that is switched on right now, so the boundary
-  # automation only ever touches lights that are actually lit.
+  # The subset of the lights above that is switched on right now. This is what
+  # keeps the schedule from ever waking anybody: at a boundary the automation
+  # targets this list, and if nothing is lit the list is empty and the service
+  # call does nothing at all.
   litLightsExpr = "{{ expand(${builtins.toJSON tunableLights}) | selectattr('state', 'eq', 'on') | map(attribute='entity_id') | list }}";
 in
 {
@@ -107,17 +113,19 @@ in
       # Time-of-day colour temperature.
       #
       # The point is not the schedule but that it is the *default state* of the
-      # lamps: switching a light on before 11:00 gives 5000 K at full output
-      # without anyone deciding anything. A light dose that requires a decision
-      # does not get taken -- which is why this is an automation and not a
-      # therapy lamp on a shelf.
+      # lamps: switching a light on in the forenoon gives 5000 K without anyone
+      # deciding anything. A light dose that requires a decision does not get
+      # taken -- which is why this is an automation and not a therapy lamp on a
+      # shelf.
       #
-      # Two automations, because they must behave differently:
+      # Neither automation ever switches a lamp on or off, and neither touches
+      # brightness. One reacts to a lamp *being* switched on, the other only
+      # addresses lamps that are already lit. On/off and dimming stay manual.
       #
-      #   1. On switch-on: set colour temperature *and* brightness. The lamp was
-      #      off, so there is no manual state to destroy.
-      #   2. At the day boundaries: follow the colour temperature only. A
-      #      hand-dimmed light should not blare back to full at 15:00.
+      # Two automations rather than one, because the scope differs and that
+      # matters: switching on a lamp should only retint *that* lamp, so a
+      # colour set by hand elsewhere in the flat survives. Only a day boundary
+      # retints everything that is lit.
       #
       # `from = "off"` in the trigger is not cosmetic: without it every
       # attribute change re-fires the automation -- including the change the
@@ -126,7 +134,7 @@ in
         {
           id = "licht_tagesfarbe_beim_einschalten";
           alias = "Licht: Tagesfarbe beim Einschalten";
-          description = "Sets colour temperature and brightness to match the time of day whenever a lamp comes on.";
+          description = "Sets the colour temperature to match the time of day whenever a lamp is switched on. Does not touch brightness.";
           # Several lamps can come on at once (group switch, scene); queued
           # rather than single so none of them is dropped.
           mode = "queued";
@@ -143,17 +151,14 @@ in
             {
               action = "light.turn_on";
               target.entity_id = "{{ trigger.entity_id }}";
-              data = {
-                kelvin = kelvinExpr;
-                brightness_pct = brightnessExpr;
-              };
+              data.kelvin = kelvinExpr;
             }
           ];
         }
         {
           id = "licht_tagesfarbe_nachziehen";
           alias = "Licht: Tagesfarbe nachziehen";
-          description = "Follows the colour temperature at the day boundaries without touching brightness.";
+          description = "Follows the colour temperature at the day boundaries, for lamps that are already lit.";
           mode = "single";
           triggers = [
             {
@@ -162,7 +167,7 @@ in
               # they have to change here too, or the colour only catches up at
               # the next boundary.
               at = [
-                "06:00:00"
+                "07:00:00"
                 "11:00:00"
                 "15:00:00"
                 "19:00:00"
@@ -172,8 +177,8 @@ in
           ];
           actions = [
             {
-              # An empty list is a no-op, so this needs no "is any light on"
-              # condition.
+              # An empty list is a no-op. That is what makes 07:00 harmless
+              # while the flat is still dark and everyone is asleep.
               action = "light.turn_on";
               target.entity_id = litLightsExpr;
               data.kelvin = kelvinExpr;
