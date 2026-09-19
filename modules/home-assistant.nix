@@ -5,6 +5,44 @@
   ...
 }:
 
+let
+  # Every light that can actually follow a colour temperature. Anything that is
+  # only a switch (the TP-Link plugs) or has no CCT channel belongs nowhere near
+  # this list -- `light.turn_on` with `kelvin` on such an entity is silently
+  # ignored, which reads as "the automation does nothing" rather than as an
+  # error.
+  #
+  # These are HA's own entity slugs, so they change when a device is renamed in
+  # the UI. If one light stops following the schedule, check Developer Tools ->
+  # States before suspecting the automation.
+  tunableLights = [
+    "light.arbeitsecke"
+    "light.test_led_stripe"
+    "light.tz3210_xwqng7ol_ts0502b"
+    "light.tz3210_xwqng7ol_ts0502b_2"
+    "light.flur_decke"
+  ];
+
+  # The daily curve. Written as a single-line Jinja expression (not an
+  # {% if %} block) so it renders to a native int rather than to a string with
+  # stray newlines around it.
+  #
+  # The forenoon block is the whole point of this: a shaded ground-floor flat
+  # measures ~100 lux where the circadian consensus asks for ~250 lux melanopic
+  # EDI -- roughly 300-400 lux vertically at the eye -- so mornings run at the
+  # top of the colour range and at full output. The evening ramp is the other
+  # half; bright 5000 K at 22:00 is the part that costs sleep.
+  #
+  # Kelvin outside a lamp's own range is clamped by HA, so the 2200 K night step
+  # is safe even on strips that bottom out at 2700 K.
+  kelvinExpr = "{% set h = now().hour %}{{ 2200 if h < 6 else 5000 if h < 11 else 4500 if h < 15 else 4000 if h < 19 else 3000 if h < 22 else 2200 }}";
+
+  brightnessExpr = "{% set h = now().hour %}{{ 20 if h < 6 else 100 if h < 15 else 80 if h < 19 else 60 if h < 22 else 30 }}";
+
+  # The subset of the above that is switched on right now, so the boundary
+  # automation only ever touches lights that are actually lit.
+  litLightsExpr = "{{ expand(${builtins.toJSON tunableLights}) | selectattr('state', 'eq', 'on') | map(attribute='entity_id') | list }}";
+in
 {
   services.home-assistant = {
     enable = true;
@@ -58,6 +96,86 @@
       # The entities were left behind long after the firmware stopped feeding
       # them, which is why the e-ink panel kept saying "Meisenknödel" -- the
       # name was ours, not the node's.
+
+      # Tageszeitabhängige Lichtfarbe.
+      #
+      # Der Punkt ist nicht der Zeitplan, sondern dass er der *Standardzustand*
+      # ist: wer vormittags Licht anmacht, bekommt 5000 K bei voller Helligkeit,
+      # ohne etwas zu entscheiden. Eine Lichtdosis, die eine Handlung verlangt,
+      # wird nicht genommen -- das ist der Grund, warum hier eine Automation
+      # steht und keine Therapielampe im Regal.
+      #
+      # Zwei Automationen, weil sie sich bewusst unterschiedlich verhalten:
+      #
+      #   1. Beim Einschalten: Farbtemperatur *und* Helligkeit setzen. Die Lampe
+      #      war aus, es gibt keinen manuellen Zustand, den man zerstören
+      #      könnte.
+      #   2. An den Tagesgrenzen: nur die Farbtemperatur nachziehen. Ein von
+      #      Hand gedimmtes Licht soll um 15:00 nicht plötzlich wieder
+      #      aufreißen.
+      #
+      # `from = "off"` im Trigger ist nicht kosmetisch: ohne das feuert jede
+      # Attributänderung -- auch die, die die Automation selbst auslöst -- und
+      # sie dreht sich im Kreis.
+      automation = [
+        {
+          id = "licht_tagesfarbe_beim_einschalten";
+          alias = "Licht: Tagesfarbe beim Einschalten";
+          description = "Setzt Farbtemperatur und Helligkeit passend zur Tageszeit, sobald eine Lampe angeht.";
+          # Mehrere Lampen können gleichzeitig angehen (Gruppenschalter, Szene);
+          # queued statt single, damit keine davon verschluckt wird.
+          mode = "queued";
+          max = 10;
+          triggers = [
+            {
+              trigger = "state";
+              entity_id = tunableLights;
+              from = "off";
+              to = "on";
+            }
+          ];
+          actions = [
+            {
+              action = "light.turn_on";
+              target.entity_id = "{{ trigger.entity_id }}";
+              data = {
+                kelvin = kelvinExpr;
+                brightness_pct = brightnessExpr;
+              };
+            }
+          ];
+        }
+        {
+          id = "licht_tagesfarbe_nachziehen";
+          alias = "Licht: Tagesfarbe nachziehen";
+          description = "Zieht an den Tagesgrenzen nur die Farbtemperatur nach, ohne die Helligkeit anzufassen.";
+          mode = "single";
+          triggers = [
+            {
+              trigger = "time";
+              # Die Grenzen der Kurve in kelvinExpr. Werden die dort geändert,
+              # gehören sie hier mit geändert, sonst springt die Farbe erst bei
+              # der nächsten Grenze.
+              at = [
+                "06:00:00"
+                "11:00:00"
+                "15:00:00"
+                "19:00:00"
+                "22:00:00"
+              ];
+            }
+          ];
+          actions = [
+            {
+              # Eine leere Liste ist ein No-op, deshalb braucht es keine
+              # Bedingung "es brennt überhaupt Licht".
+              action = "light.turn_on";
+              target.entity_id = litLightsExpr;
+              data.kelvin = kelvinExpr;
+            }
+          ];
+        }
+      ];
 
     };
 
