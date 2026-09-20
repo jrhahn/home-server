@@ -17,17 +17,19 @@ let
   # friendly names, so the friendly name is given here for each: the ids alone
   # are unreadable, and renaming a device in the UI does not change them.
   #
-  # Deliberately absent: light.ldvsmart_pla45x45t ("Küche - Decke", the LEDVANCE
-  # Planon panel). It is a tunable-white luminaire, but localtuya exposes it as
-  # `supported_color_modes: [onoff]` -- Home Assistant can currently only switch
-  # it, not dim or tint it. Worth revisiting after the localtuya fork is
-  # updated, at which point it belongs in this list.
+  # All three LocalTuya lamps are in here now. Until the integration was moved
+  # to the maintained fork they could not be: the floor lamp had no entity at
+  # all, the Planon panel reported `supported_color_modes: [onoff]`, and the
+  # hallway light's datapoints were mapped two off -- brightness read from the
+  # on/off boolean and colour temperature from the work-mode string.
   tunableLights = [
     "light.arbeitsecke" # "Arbeitsecke" (ZHA)
     "light.test_led_stripe" # "Küche LED Streifen" -- the id is a misnomer, this is not a test rig
     "light.tz3210_xwqng7ol_ts0502b" # "LED Streifen" (ZHA)
     "light.tz3210_xwqng7ol_ts0502b_2" # "Lampe Fototapete" (ZHA)
-    "light.flur_decke" # "Flur - Decke" (localtuya)
+    "light.flur_decke" # "Flur - Decke" (LocalTuya)
+    "light.ldvsmart_pla45x45t" # "Küche - Decke", LEDVANCE Planon 45x45 (LocalTuya)
+    "light.deckenfluter_deckenfluter" # SUN@HOME floor lamp, 2200-5000 K (LocalTuya)
   ];
 
   # The daily colour temperature curve.
