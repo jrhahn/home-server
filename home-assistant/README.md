@@ -7,7 +7,12 @@ This directory contains the safe, tracked parts of the Pi Home Assistant config:
 - `scripts.yaml`
 - `scenes.yaml`
 - built-in blueprints
-- `custom_components/localtuya`
+
+LocalTuya is no longer vendored here. It comes from nixpkgs, declared as a
+`customComponents` entry in `modules/home-assistant.nix`; the copy that used to
+live under `custom_components/` was rospogrigio/localtuya 5.2.3, whose options
+flow raises `AttributeError: property 'config_entry' ... has no setter` on Home
+Assistant 2024.11 and later, so no device could be added or edited.
 
 The private state needed for a no-reconfiguration migration is intentionally not
 tracked:

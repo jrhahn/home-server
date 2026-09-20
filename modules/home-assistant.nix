@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   server,
   ...
 }:
@@ -424,6 +425,26 @@ in
         }
       ];
     };
+    # LocalTuya, from nixpkgs rather than vendored into this repo.
+    #
+    # The copy that used to sit in home-assistant/config/custom_components was
+    # rospogrigio/localtuya 5.2.3, abandoned since 2023, and it had stopped
+    # working in a way that is easy to miss: its options flow raises
+    # `AttributeError: property 'config_entry' ... has no setter` on any Home
+    # Assistant from 2024.11 on, because assigning to `self.config_entry` in an
+    # OptionsFlow is no longer allowed. The entities it had already created kept
+    # running, so nothing looked broken -- but "Configure" on the integration,
+    # in the UI and over the API alike, threw a 500. No device could be added or
+    # edited. That is why the SUN@HOME floor lamp never made it into Home
+    # Assistant and why the hallway light's brightness datapoint could not be
+    # corrected.
+    #
+    # xZetsubou/hass-localtuya is the maintained fork, same `localtuya` domain
+    # and config-entry format, so the configured devices carry over.
+    customComponents = [
+      pkgs.home-assistant-custom-components.localtuya
+    ];
+
     configWritable = true;
     openFirewall = false;
 

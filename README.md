@@ -115,7 +115,9 @@ Zigbee (ZHA) pairings in `zigbee.db` only survive if you physically move the
 The NixOS Home Assistant module includes the built-in integrations listed in
 the Pi's `.storage/core.config_entries`: ZHA, Tuya, TP-Link, Denon/HEOS, mobile
 app, Met, Radio Browser, Shopping List, Bluetooth, and related defaults. The
-custom `localtuya` integration is copied as part of `custom_components/`.
+custom `localtuya` integration comes from nixpkgs
+(`home-assistant-custom-components.localtuya`, the maintained
+xZetsubou/hass-localtuya fork) and is declared in the module, not copied.
 
 This is Home Assistant Core on NixOS, not Home Assistant OS. That means no
 Supervisor add-ons. Your Pi also had Mosquitto, Zigbee2MQTT, Node-RED, and
