@@ -171,6 +171,16 @@ in
           mode = "single";
           triggers = [
             {
+              # A restart leaves every lamp on whatever colour it held before,
+              # and nothing would correct that until the next boundary -- up to
+              # nine hours later for a restart just after 22:00. Worse, a
+              # restart *at* a boundary loses that boundary outright: the
+              # entities are not loaded yet, so they are not "on" yet and the
+              # target list skips them.
+              trigger = "homeassistant";
+              event = "start";
+            }
+            {
               trigger = "time";
               # The boundaries of the curve in kelvinExpr. Change them there and
               # they have to change here too, or the colour only catches up at
