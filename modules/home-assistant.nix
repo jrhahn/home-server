@@ -32,38 +32,71 @@ let
     "light.deckenfluter_deckenfluter" # SUN@HOME floor lamp, 2200-5000 K (LocalTuya)
   ];
 
-  # The daily colour temperature curve.
+  # The daily colour temperature curve, as piecewise-linear interpolation
+  # between anchor points given in minutes since midnight.
   #
-  # Brightness is deliberately not part of this. Switching on, switching off and
-  # dimming are done by hand; the only thing that follows the clock is the
-  # colour. Nothing here ever turns a lamp on -- see the automations below.
+  # Continuous rather than stepped, because the schedule is re-applied every few
+  # minutes rather than at boundaries: over the steepest stretch (the 07:00
+  # sunrise ramp, 2800 K in 90 minutes) a five-minute tick moves about 155 K,
+  # and across the rest of the day far less. Nothing is visible as a jump.
   #
-  # Expressed in minutes since midnight rather than in whole hours so the
-  # boundaries can sit anywhere; `7*60+30` for half past seven is a one-token
-  # change. Kept as a single-line Jinja expression rather than an {% if %} block
-  # so it renders to a native int instead of a string with stray newlines.
+  # The shape: dark until 07:00, a brisk rise to full daylight by 08:30, that
+  # held through midday -- this is the part that matters in a shaded
+  # ground-floor flat, where measured light sits near 100 lux against the
+  # ~250 lux melanopic EDI the circadian consensus asks for -- then a long
+  # decline into the evening. 5000 K at 22:00 is what costs sleep.
   #
-  # The forenoon block is the point of the whole file: the flat is a shaded
-  # ground floor and measures around 100 lux where the circadian consensus asks
-  # for roughly 250 lux melanopic EDI -- about 300-400 lux vertically at the eye
-  # -- so from 07:00 the colour sits at the top of the range. The evening ramp is
-  # the other half; 5000 K at 22:00 is the part that costs sleep.
-  #
-  # Kelvin outside a lamp's own range is clamped by Home Assistant, so the
-  # 2200 K night step is safe on any of these (they all report 2000-6535 K).
-  #
-  # Fed to `light.turn_on` as `color_temp_kelvin`, never as `kelvin`. The older
-  # `kelvin` field is accepted without complaint and then ignored: the service
-  # call succeeds, the automation records a trigger, and the lamp does not
-  # change colour. Verified against this instance -- `kelvin: 4000` left the
-  # light at 5025 K, `color_temp_kelvin: 4000` moved it at once.
-  kelvinExpr = "{% set m = now().hour * 60 + now().minute %}{{ 2200 if m < 7*60 else 5000 if m < 11*60 else 4500 if m < 15*60 else 4000 if m < 19*60 else 3000 if m < 22*60 else 2200 }}";
+  # Brightness is not part of this. Switching on, switching off and dimming
+  # stay manual.
+  curveAnchors = [
+    [ 0 2200 ] # midnight
+    [ 420 2200 ] # 07:00, still night colour
+    [ 510 5000 ] # 08:30, full daylight
+    [ 720 5000 ] # 12:00, held
+    [ 1080 4000 ] # 18:00
+    [ 1320 2200 ] # 22:00
+    [ 1440 2200 ] # midnight
+  ];
 
-  # The subset of the lights above that is switched on right now. This is what
-  # keeps the schedule from ever waking anybody: at a boundary the automation
-  # targets this list, and if nothing is lit the list is empty and the service
-  # call does nothing at all.
-  litLightsExpr = "{{ expand(${builtins.toJSON tunableLights}) | selectattr('state', 'eq', 'on') | map(attribute='entity_id') | list }}";
+  # Sets ns.k to the target kelvin for right now. Prefixed to both expressions
+  # below so the curve has exactly one definition.
+  curvePrelude = ''
+    {% set m = now().hour * 60 + now().minute %}
+    {% set pts = [[0, 2200], [420, 2200], [510, 5000], [720, 5000], [1080, 4000], [1320, 2200], [1440, 2200]] %}
+    {% set ns = namespace(k=pts[0][1]) %}
+    {% for i in range(pts | length - 1) %}
+      {% if m >= pts[i][0] and m <= pts[i + 1][0] %}
+        {% set ns.k = (pts[i][1] + (pts[i + 1][1] - pts[i][1]) * (m - pts[i][0]) / (pts[i + 1][0] - pts[i][0])) | round | int %}
+      {% endif %}
+    {% endfor %}
+  '';
+
+  kelvinExpr = curvePrelude + "{{ ns.k }}";
+
+  # The lamps that are lit *and* more than 50 K off target.
+  #
+  # The deadband is what keeps this quiet: on a plateau every lamp already holds
+  # its value, the list comes back empty, and the service call is a no-op. Only
+  # during a ramp does anything actually get sent. 50 K also absorbs the mired
+  # rounding the lamps do -- they answer 2202 K to a request for 2200.
+  #
+  # Each lamp is compared against the target clamped to its *own* range, not the
+  # raw target. Without that the hallway and kitchen lamps, which bottom out at
+  # 2700 K, would look 500 K off all night and be rewritten on every tick
+  # forever.
+  litLightsExpr = curvePrelude + ''
+    {% set out = namespace(l=[]) %}
+    {% for e in expand(${builtins.toJSON tunableLights}) if e.state == 'on' %}
+      {% set lo = e.attributes.get('min_color_temp_kelvin', 0) %}
+      {% set hi = e.attributes.get('max_color_temp_kelvin', 100000) %}
+      {% set want = [[ns.k, lo] | max, hi] | min %}
+      {% set cur = e.attributes.get('color_temp_kelvin') %}
+      {% if cur is none or (cur - want) | abs > 50 %}
+        {% set out.l = out.l + [e.entity_id] %}
+      {% endif %}
+    {% endfor %}
+    {{ out.l }}
+  '';
 in
 {
   services.home-assistant = {
@@ -132,9 +165,10 @@ in
       # addresses lamps that are already lit. On/off and dimming stay manual.
       #
       # Two automations rather than one, because the scope differs and that
-      # matters: switching on a lamp should only retint *that* lamp, so a
-      # colour set by hand elsewhere in the flat survives. Only a day boundary
-      # retints everything that is lit.
+      # matters: switching on a lamp retints *that* lamp at once, so it is
+      # right the instant it comes on rather than within five minutes. The
+      # five-minute loop is the safety net under it, and under everything else
+      # that can go wrong.
       #
       # `from = "off"` in the trigger is not cosmetic: without it every
       # attribute change re-fires the automation -- including the change the
@@ -167,8 +201,11 @@ in
         {
           id = "licht_tagesfarbe_nachziehen";
           alias = "Licht: Tagesfarbe nachziehen";
-          description = "Follows the colour temperature at the day boundaries, for lamps that are already lit.";
+          description = "Keeps every lit lamp on the curve, re-applied every five minutes. Does not touch brightness and never switches a lamp on.";
+          # A slow lamp must not pile up runs; drop the overlap quietly rather
+          # than warn every five minutes.
           mode = "single";
+          max_exceeded = "silent";
           triggers = [
             {
               # A restart leaves every lamp on whatever colour it held before,
@@ -181,23 +218,21 @@ in
               event = "start";
             }
             {
-              trigger = "time";
-              # The boundaries of the curve in kelvinExpr. Change them there and
-              # they have to change here too, or the colour only catches up at
-              # the next boundary.
-              at = [
-                "07:00:00"
-                "11:00:00"
-                "15:00:00"
-                "19:00:00"
-                "22:00:00"
-              ];
+              # Every five minutes, all day. The curve is continuous, so this is
+              # a control loop rather than a set of appointments: a command the
+              # lamp missed, a lamp that was offline, a restart -- all of it
+              # corrects itself on the next tick instead of waiting for the next
+              # boundary. The deadband in litLightsExpr keeps it silent whenever
+              # there is nothing to change.
+              trigger = "time_pattern";
+              minutes = "/5";
             }
           ];
           actions = [
             {
-              # An empty list is a no-op. That is what makes 07:00 harmless
-              # while the flat is still dark and everyone is asleep.
+              # An empty list is a no-op, which is the normal case: on a
+              # plateau nothing is off target, and while the flat is dark
+              # nothing is lit.
               action = "light.turn_on";
               target.entity_id = litLightsExpr;
               data.color_temp_kelvin = kelvinExpr;
