@@ -105,11 +105,11 @@
         "nixpkgs-espflash": "nixpkgs-espflash"
       },
       "locked": {
-        "lastModified": 1789931777,
-        "narHash": "sha256-w711rK7WjR8XnFbFADHlGIHfnTl66eysyCfVXEgTRCU=",
+        "lastModified": 1789937901,
+        "narHash": "sha256-xS2hmPmpoxCqOhmQ37HjHBuCz7peUbruWFs0+mtvM+Y=",
         "owner": "jrhahn",
         "repo": "rs-smarthome-nodes",
-        "rev": "137e70171d235ea3f127f75f405560c401953340",
+        "rev": "76e94438edc2a812af9a8f14a98ce8f2ea956c61",
         "type": "github"
       },
       "original": {
