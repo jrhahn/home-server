@@ -48,6 +48,12 @@ let
   #
   # Kelvin outside a lamp's own range is clamped by Home Assistant, so the
   # 2200 K night step is safe on any of these (they all report 2000-6535 K).
+  #
+  # Fed to `light.turn_on` as `color_temp_kelvin`, never as `kelvin`. The older
+  # `kelvin` field is accepted without complaint and then ignored: the service
+  # call succeeds, the automation records a trigger, and the lamp does not
+  # change colour. Verified against this instance -- `kelvin: 4000` left the
+  # light at 5025 K, `color_temp_kelvin: 4000` moved it at once.
   kelvinExpr = "{% set m = now().hour * 60 + now().minute %}{{ 2200 if m < 7*60 else 5000 if m < 11*60 else 4500 if m < 15*60 else 4000 if m < 19*60 else 3000 if m < 22*60 else 2200 }}";
 
   # The subset of the lights above that is switched on right now. This is what
@@ -151,7 +157,7 @@ in
             {
               action = "light.turn_on";
               target.entity_id = "{{ trigger.entity_id }}";
-              data.kelvin = kelvinExpr;
+              data.color_temp_kelvin = kelvinExpr;
             }
           ];
         }
@@ -181,7 +187,7 @@ in
               # while the flat is still dark and everyone is asleep.
               action = "light.turn_on";
               target.entity_id = litLightsExpr;
-              data.kelvin = kelvinExpr;
+              data.color_temp_kelvin = kelvinExpr;
             }
           ];
         }
