@@ -71,8 +71,23 @@ Kopf in einer einzigen grauen Fläche {%- endcomment -%}
     {%- endcomment -%}
     {%- assign fnl = fn | downcase -%}
     {%- if fnl contains "vogel" or fnl contains "vögel" -%}{%- assign keep = true -%}{%- endif -%}
+    {%- assign word = fn | split: " " | first -%}
+    {%- comment -%} Und eine Regel, die wegwirft statt zu behalten: die
+    Wasserzähler. AI-on-the-edge meldet die Chiptemperatur seines ESP32 mit
+    `device_class: temperature` -- genau das Feld, aus dem hier eine Kachel
+    entsteht. 58 °C für den kalten Zähler, als wäre der Schacht ein Raum, und
+    zwei davon machen aus dem 2x3-Raster sieben Kacheln und damit eine vierte
+    Zeile.
+
+    Zwei Bedingungen, weil zwei Dinge falsch sind und jede für sich ausfallen
+    kann: `cpu` hält die Chiptemperatur draußen, auch wenn das Gerät in Home
+    Assistant einmal einen lesbaren Namen bekommt, und der Schrägstrich hält
+    alles draußen, dessen erstes Wort ein MQTT-Topic ist
+    (`smarthome/wasserzaehler_kalt`) statt eines Raumnamens. Kein Raum heißt so.
+    Der Zählerstand selbst trägt `device_class: water` und kam nie durch den
+    Filter -- es war immer nur die Chiptemperatur {%- endcomment -%}
+    {%- if fnl contains "cpu" or word contains "/" -%}{%- assign keep = false -%}{%- endif -%}
     {%- if keep -%}
-      {%- assign word = fn | split: " " | first -%}
       {%- assign acc = acc | append: word | append: "|" -%}
     {%- endif -%}
   {%- endif -%}

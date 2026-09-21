@@ -286,6 +286,31 @@ of "the node must not be publishing". Anything else without a `device_class` sta
 a Home Assistant install has hundreds of entities and this screen has room for
 about a dozen numbers.
 
+#### One rule throws away instead of keeping: the water meters
+
+The two AI-on-the-edge meters joined the broker on 2026-09-19 and put a sixth
+and seventh tile on the panel, which is a fourth row in a 2 x 3 grid. Not
+through their readings — a meter reading carries `device_class: water` and never
+passed the filter. It was the **CPU temperature** of their ESP32s, published
+with `device_class: temperature`, which is exactly the field a tile is built
+from. The cold meter's shaft read 58 °C, as though it were a room.
+
+Two conditions reject them, because two separate things are wrong and either
+could stop being true on its own:
+
+* a `friendly_name` containing `cpu`, in lower case. A chip temperature is not
+  a room temperature, and this keeps holding if the devices are ever renamed to
+  something readable in Home Assistant.
+* a first word containing `/`. jomjol's firmware names the device after its MQTT
+  topic, so the name arrives as `smarthome/wasserzaehler_kalt CPU Temperature`
+  and the derived room is `smarthome/wasserzaehler_kalt`. No room is called
+  that, and anything whose first word is a topic is not a room.
+
+This is the only rule here that subtracts. Everything else answers "what counts
+as a room sensor"; these two answer "what is a device that happens to report a
+temperature", and that distinction is the one worth keeping in view when the
+next such device arrives.
+
 Everything below the temperature prints as small gray lines, since a room's
 reading is the temperature and everything else is context. One line per sensor,
 each with its own mark in front: a droplet for humidity, a scatter of grains for
