@@ -35,10 +35,10 @@ The 800x480 splits into a full-width weather header and, below it, two columns:
 | PM 3/5 | 20°  20°  20°  20°  19°  19°  19°  19°               |
 | auf .. +------------------------------------------------------+
 +--------+ Radar     130 km O/W · 165 km N/S · Bild vor 8 Min.  |
-| Räume  |  vor 2 h      vor 1 h        jetzt                   |
+|Räume  !|  vor 2 h      vor 1 h        jetzt                   |
 | Wohnz. | +--------+  +--------+   +--------+                  |
 | Schlafz| |        |  |        |   |        |                  |
-| Küche  | |   GG   |  |   GG   |   |   GG   |                  |
+| Küche !| |   GG   |  |   GG   |   |   GG   |                  |
 | Bad    | |  +DA   |  |  +DA   |   |  +DA   |                  |
 | Terras.| |   +HD  |  |   +HD  |   |   +HD  |                  |
 |        | +--------+  +--------+   +--------+                  |
@@ -450,6 +450,52 @@ every 15 minutes on the quarter hour and the device fetches `/api/display`
 every twelve to fifteen, so the screen can sit half an hour behind a fix that
 has already landed.
 
+### The CO2 alert
+
+The one reading on this screen that asks for something to be done. Above
+**1000 ppm** a room gets a black warning mark on its CO2 line, the value goes
+from grey to the house rule — number black, unit grey — and the `Räume` heading
+picks up `Küche lüften`.
+
+1000 ppm is where the Pettenkofer number and the German indoor-air guide values
+meet: below it a room is unremarkable, above it somebody opens a window. One
+threshold, not two. A second one would only grade the urgency, and the action is
+the same either way, so the second mark would cost a shape on the screen and
+change nothing anyone does.
+
+Two places, because the alert has two jobs:
+
+* the **heading** says that something needs doing, in the spot the radar uses
+  for its image age — free, because a heading is a line that already exists;
+* the **tile** says where. The mark sits on the CO2 line rather than in the name
+  line next to the signal bars: at around 75 px the CO2 line is the shortest in
+  a tile, while the name line is the only one besides the particulates that can
+  argue about the tile's width. Rendered with one, two and three rooms over the
+  limit, the tiles measure 113 and 127 px either way — the mark costs nothing.
+
+The heading writes the room's name when exactly one room is over and only the
+count when more are (`3 Räume lüften`). Not for brevity's sake: the column takes
+whatever the radar leaves it, and three room names in a line that must not wrap
+would be the widest thing in the column and would push the grid into the radar.
+The measured worst case as written is 150 px against 230 px of column. Which
+rooms they are is on the tiles anyway — that is what the marks are for.
+
+The list is collected in **one pass** over `source_2` before the grid renders,
+not one pass per room: the tiles read their own CO2, but the heading comes
+before the loop and has to know beforehand whether there is anything to say. It
+is then re-sorted through `rooms` so the heading names them in the order the
+grid shows them, and `rooms contains r` drops any CO2 sensor whose first word is
+not a room in the grid — otherwise the screen could ask for a window to be
+opened in a room it does not show a tile for.
+
+The mark itself is an 8x10 black field with the exclamation mark cut out in
+white, drawn in whole pixels at its final size like the battery and the bars
+rather than as a scaled triangle. A triangle with a stroke at 10 px lands on
+half pixels, and what the 2-bit quantiser makes of that is a grey smudge, not a
+warning. The outdoor particulate line in the current conditions is the older
+half of the same question — `außen PM 3/5` answers *is the air out there better*
+once the alert has said *open a window*.
+
 ### Battery and WiFi
 
 Top left, on the line the weather icon starts: the panel's own state is the one
@@ -526,8 +572,9 @@ with the black border and 20 % reads as an empty battery.
 
 ### Lines that appear only when they have something to say
 
-The screen is full, so anything new has to be quiet most of the time. Three
-readings work that way, and all three sit in the current-conditions column:
+The screen is full, so anything new has to be quiet most of the time. Four
+readings work that way. Three sit in the current-conditions column, and the
+fourth is [the CO2 alert](#the-co2-alert), which is silent below 1000 ppm:
 
 * **Perceived temperature** prints as `wie -2°` beside the big number, and only
   when it differs from the measured one by at least 3 K. Beside rather than

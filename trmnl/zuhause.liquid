@@ -31,6 +31,12 @@ Kontur, das bei 10 px noch als "Partikel" liest und nicht als Punktraster
 trägt die Größe nicht. Das Auge ist weiß ausgespart, sonst verschwindet der
 Kopf in einer einzigen grauen Fläche {%- endcomment -%}
 {%- capture i_bird -%}<svg viewBox="0 0 24 24" width="100%" height="100%"><g fill="#555555"><path d="M10.4 20.6c-3.7 0-6.7-2.5-6.7-5.6s3-5.6 6.7-5.6 6.7 2.5 6.7 5.6-3 5.6-6.7 5.6z"/><circle cx="15.8" cy="8.2" r="3.8"/><polygon points="19,6.9 23.8,8.4 19,9.9"/><polygon points="5.2,11.4 0.6,5.4 3.2,14"/></g><circle cx="17" cy="7.3" r="0.9" fill="#FFFFFF"/></svg>{%- endcapture -%}
+{%- comment -%} Das Warnzeichen: schwarzes Feld mit ausgespartem Ausrufezeichen,
+und wie Batterie und Balken in ganzen Pixeln auf seiner Endgröße gezeichnet statt
+als skalierte Kurve. Ein Dreieck mit Kontur wäre bei 10 px auf halben Pixeln
+gelandet, und was der 2-Bit-Quantisierer daraus macht, ist kein Warnzeichen mehr,
+sondern ein grauer Fleck {%- endcomment -%}
+{%- capture i_warn -%}<svg viewBox="0 0 8 10" width="8" height="10"><rect x="0" y="0" width="8" height="10" fill="#000000"/><rect x="3" y="2" width="2" height="4" fill="#FFFFFF"/><rect x="3" y="7" width="2" height="1" fill="#FFFFFF"/></svg>{%- endcapture -%}
 {%- capture i_moonc -%}<svg viewBox="0 0 24 24" width="100%" height="100%"><path d="M14.5 9.2A5.6 5.6 0 0 1 8 2.8a5.6 5.6 0 1 0 6.5 6.4z" fill="#555555"/><path d="M7.5 20h9.8a3.4 3.4 0 0 0 .3-6.8 5 5 0 0 0-9.6-1 3.9 3.9 0 0 0-.5 7.8z" fill="#AAAAAA"/></svg>{%- endcapture -%}
 
 {%- assign wc = cur.weather_code -%}
@@ -106,6 +112,42 @@ bleibt damit intakt, ein neuer Raum erscheint weiter von selbst {%- endcomment -
   {%- unless preferred contains r -%}{%- assign ordered = ordered | append: r | append: "|" -%}{%- endunless -%}
 {%- endfor -%}
 {%- assign rooms = ordered | split: "|" -%}
+
+{%- comment -%} CO2-Alarm: ein Durchlauf durch die Zustandsliste, nicht einer je
+Raum. Die Kacheln lesen ihr CO2 ohnehin selbst, aber die Kopfzeile steht vor der
+Schleife und muss vorher wissen, ob überhaupt etwas zu melden ist.
+
+1000 ppm ist die Schwelle, an der die Pettenkofer-Zahl und die Innenraum-
+Richtwerte sich treffen: darunter ist hygienisch unauffällig, darüber wird
+gelüftet. Eine Stufe, keine zwei -- eine zweite Schwelle würde nur den Grad der
+Dringlichkeit abstufen, und die Handlung ist in beiden Fällen dieselbe.
+
+`rooms contains r` filtert weg, was keine Kachel hat: ein CO2-Sensor, dessen
+erstes Wort kein Raum aus dem Raster ist, könnte sonst zu einem "lüften" führen,
+zu dem der Screen keine markierte Kachel zeigt {%- endcomment -%}
+{%- assign co2_limit = 1000 -%}
+{%- assign luft = "" -%}
+{%- for s in source_2 -%}
+  {%- if s.attributes.device_class == "carbon_dioxide" -%}
+    {%- assign st = s.state -%}
+    {%- if st != "unavailable" and st != "unknown" and st != "none" -%}
+      {%- assign ppm = st | times: 1 -%}
+      {%- if ppm >= co2_limit -%}
+        {%- assign r = s.attributes.friendly_name | split: " " | first -%}
+        {%- if rooms contains r -%}{%- assign luft = luft | append: r | append: "|" -%}{%- endif -%}
+      {%- endif -%}
+    {%- endif -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- comment -%} Über `rooms` eingesammelt statt über die Sensorreihenfolge: die
+Meldung nennt die Räume dann in derselben Folge, in der das Raster sie zeigt
+{%- endcomment -%}
+{%- assign luft_uniq = luft | split: "|" | uniq -%}
+{%- assign luft = "" -%}
+{%- for r in rooms -%}
+  {%- if luft_uniq contains r -%}{%- assign luft = luft | append: r | append: "|" -%}{%- endif -%}
+{%- endfor -%}
+{%- assign luft_rooms = luft | split: "|" -%}
 
 {%- comment -%} Radar: RainViewer hält 120 Minuten in 10-Minuten-Schritten vor {%- endcomment -%}
 {%- assign host = source_3.host -%}
@@ -371,7 +413,24 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
   dem Panel und ist frei, seit sein Zustand oben neben dem Wetterzeichen steht --
   der nächste Raum bekommt sie {%- endcomment -%}
   <span style="display:flex;flex-direction:column;flex:1;min-width:0">
-    <span class="label label--underline" style="width:100%">Räume</span>
+    {%- comment -%} Die Meldung sitzt in der Überschrift, wie beim Radar die
+    Bildzeit: sie kostet dort keine Zeile, und eine Zeile ist in dieser Spalte das
+    Teuerste, was es gibt.
+
+    Bei einem Raum steht sein Name da, bei mehreren nur ihre Zahl. Nicht aus
+    Sparsamkeit, sondern wegen der Breite: die Spalte nimmt, was der Radar übrig
+    lässt, und drei ausgeschriebene Raumnamen in einer nicht umbrechenden Zeile
+    wären breiter als alles andere in der Spalte und würden das Raster in den Radar
+    drücken. Welche Räume es sind, steht ohnehin an den Kacheln {%- endcomment -%}
+    <span class="label label--underline" style="justify-content:space-between;width:100%">
+      <span>Räume</span>
+      {%- if luft_rooms.size > 0 -%}
+      <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:4px;font-weight:400;white-space:nowrap">
+        <span style="display:inline-block;width:8px;height:10px;flex:none">{{ i_warn }}</span>
+        <span>{% if luft_rooms.size == 1 %}{{ luft_rooms[0] }}{% else %}{{ luft_rooms.size }} Räume{% endif %} lüften</span>
+      </span>
+      {%- endif -%}
+    </span>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;margin-top:4px;width:100%">
       {%- for room in rooms -%}
         {%- assign rt = "" -%}{%- assign rh = "" -%}{%- assign rc = "" -%}{%- assign tw = 99 -%}
@@ -480,8 +539,26 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
                 </span>
               </span>
             {%- endif -%}
+            {%- comment -%} Über der Schwelle wechselt die Zeile von grau auf die
+            Hausregel -- Zahl schwarz, Einheit grau -- und bekommt das Warnzeichen
+            davor. Das ist die Markierung, die sagt, welcher Raum gemeint ist: die
+            Überschrift meldet, dass gelüftet werden muss, die Kachel, wo.
+
+            Das Zeichen steht auf dieser Zeile und nicht in der Namenszeile, weil die
+            CO2-Zeile mit rund 75 px die kürzeste der Kachel ist. In der Namenszeile
+            käme es hinter `Schlafzimmer` und neben die Balken, und die Namenszeile
+            ist die einzige neben der Partikelzeile, die um die Kachelbreite
+            mitreden kann {%- endcomment -%}
             {%- if rc != "" -%}
-              <span class="label label--small" style="color:#555555;white-space:nowrap;margin-top:1px">CO&#8322;&nbsp;{{ rc | round }}<span style="color:#555555">&nbsp;ppm</span></span>
+              {%- assign rcn = rc | times: 1 -%}
+              {%- if rcn >= co2_limit -%}
+                <span class="label label--small" style="display:flex;flex-direction:row;align-items:center;gap:3px;white-space:nowrap;margin-top:1px">
+                  <span style="display:inline-block;width:8px;height:10px;flex:none">{{ i_warn }}</span>
+                  <span>CO&#8322;&nbsp;{{ rc | round }}<span style="color:#555555">&nbsp;ppm</span></span>
+                </span>
+              {%- else -%}
+                <span class="label label--small" style="color:#555555;white-space:nowrap;margin-top:1px">CO&#8322;&nbsp;{{ rc | round }}<span style="color:#555555">&nbsp;ppm</span></span>
+              {%- endif -%}
             {%- endif -%}
           {%- endif -%}
           {%- comment -%} Partikel wieder ausgeschrieben -- `PM2.5 8 &middot; PM10 14`.
