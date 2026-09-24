@@ -26,7 +26,7 @@ The 800x480 splits into a full-width weather header and, below it, two columns:
 
 ```
 +--------+------------------------------------------------------+
-| [icon] |  heute    Sa      So      Mo      Di                 |
+|[icon]▭%|  heute    Sa      So      Mo      Di                 |
 |        |  29° 19° 24° 14° 25° 7°  31° 12° 22° 16°             |
 | 21° wie+------------------------------------------------------+
 |  -2°   | Stündlich                        nächste 8 Stunden   |
@@ -41,7 +41,7 @@ The 800x480 splits into a full-width weather header and, below it, two columns:
 | Küche  | |   GG   |  |   GG   |   |   GG   |                  |
 | Bad    | |  +DA   |  |  +DA   |   |  +DA   |                  |
 | Terras.| |   +HD  |  |   +HD  |   |   +HD  |                  |
-| Panel  | +--------+  +--------+   +--------+                  |
+|        | +--------+  +--------+   +--------+                  |
 +--------+------------------------------------------------------+
 ```
 
@@ -60,9 +60,9 @@ The hourly strip's heading is `Stündlich`, not `Heute`. At 21:00 the eight
 columns run to 04:00, so half of them are tomorrow and `Heute` would simply be
 wrong.
 
-The room grid is two columns in the lower half, so five rooms and the panel tile
-fill three rows exactly. It takes whatever width the radar leaves — the radar's
-is fixed at 490 px because three square 152 px frames plus their separators
+The room grid is two columns in the lower half, so five rooms fill three rows
+with the last one half empty. It takes whatever width the radar leaves — the
+radar's is fixed at 490 px because three square 152 px frames plus their separators
 define it exactly, and a fixed width also makes the frames start flush under
 their own divider instead of floating in the middle of a stretched column. It is a `grid`, not a flex row, and the rooms come
 out of the sensor list rather than a list here, so a sixth room simply starts a
@@ -95,9 +95,10 @@ this same reason. Overriding the size is safe, unlike with the labels: the
 font, and only `value--xxsmall` is switched to the bitmap `TRMNL16` on this
 model. The `label` classes are the bitmap ones — those must keep their native
 size, which is why the lines were tightened by their margins and not by their
-type. The panel's own battery and WiFi sit in the grid as a final tile rather
-than on a divider: as a tile they move down with the rooms instead of colliding
-with them.
+type. The panel's own battery and WiFi used to be the grid's sixth tile, which
+is what filled that last row. They are one line beside the weather icon now —
+see [Why it left the room grid](#why-it-left-the-room-grid) — so the slot is
+free for the next room.
 
 ### Extension
 
@@ -289,8 +290,8 @@ about a dozen numbers.
 #### One rule throws away instead of keeping: the water meters
 
 The two AI-on-the-edge meters joined the broker on 2026-09-19 and put a sixth
-and seventh tile on the panel, which is a fourth row in a 2 x 3 grid. Not
-through their readings — a meter reading carries `device_class: water` and never
+and seventh tile on the panel, which was a fourth row in the 2 x 3 grid the
+panel's own tile then filled to six. Not through their readings — a meter reading carries `device_class: water` and never
 passed the filter. It was the **CPU temperature** of their ESP32s, published
 with `device_class: temperature`, which is exactly the field a tile is built
 from. The cold meter's shaft read 58 °C, as though it were a room.
@@ -389,9 +390,10 @@ row of tiles read as crooked. A fixed edge is also why this is flex rather than
 whether the sanitizer keeps it is untested, while `justify-content` is already
 in use. The bars go last so they land in the corner itself.
 
-The bars are the panel tile's own shape scaled to 12x10, and deliberately its
-**same thresholds** — `>= -90`, `-70`, `-61`, the mapping
-[Battery and WiFi](#battery-and-wifi) spells out for `wifi_percentage`. The
+The bars are the panel's own shape at the same 12x10 — the panel block was
+scaled down to meet them — and deliberately its **same thresholds** — `>= -90`,
+`-70`, `-61`, the mapping [Battery and WiFi](#battery-and-wifi) spells out for
+`wifi_percentage`. The
 panel's reading arrives as a percentage and gets converted there; a node's
 arrives as dBm and needs no conversion, but two glyphs on one screen have to
 mean the same thing. A node with no reading draws no glyph rather than three
@@ -419,8 +421,10 @@ its entity unavailable; the row stays in Home Assistant's entity registry,
 `GET /api/states` keeps serving it with its `friendly_name`, and the first word
 of that name is still a room. The feeder scale was renamed from `Meisenknödel`
 to `Terrasse` and its hand-declared entities retired, and a `Meisenknödel` tile
-stayed on the panel regardless — a sixth room, which also pushes the 2x3 grid
-into a fourth row.
+stayed on the panel regardless — a sixth room. Back then that pushed the 2x3
+grid into a fourth row, because the panel's own tile held the sixth slot; with
+that tile gone a sixth room fills the grid exactly and a seventh starts the
+fourth row.
 
 Nothing in this directory and nothing in Nix can fix that. The retained
 discovery topics on the broker were already clean, which is what makes this
@@ -448,7 +452,7 @@ has already landed.
 
 ### Battery and WiFi
 
-Bottom left, as the last tile of the room grid: the panel's own state is the one
+Top left, on the line the weather icon starts: the panel's own state is the one
 thing on this screen that no exchange fetches.
 Terminus puts the device into the Liquid context itself, and the device struct
 exposes exactly three keys (`app/structs/device.rb`, `liquid_attributes`):
@@ -489,18 +493,36 @@ into the distinctions worth acting on — three bars from 60 % (RSSI >= -61 dBm)
 two from 40 % (>= -70), one from 20 % (>= -90), none below that.
 
 A reading of `0` means the column still holds its default and nothing has been
-reported yet; a device at a true 0 % is not making requests. Both are drawn as
-an em dash beside an unlit glyph rather than as `0 %`. The tile as a whole
-disappears when `extension.device` is empty, which is what a screen rendered
-for a model instead of a device gets — the rooms then simply close the gap.
+reported yet; a device at a true 0 % is not making requests. The battery draws
+an em dash instead of `0 %`; the bars are not drawn at all, on the room tiles'
+rule that absent and weak are different states. The block as a whole disappears
+when `extension.device` is empty, which is what a screen rendered for a model
+instead of a device gets — the weather icon then has the line to itself.
+
+#### Why it left the room grid
+
+As a tile it was as wide and as tall as a room, for two numbers that say nothing
+about the flat and everything about the device showing it. Beside the weather
+icon it costs no line at all: the current-conditions column is 148 px and the
+icon is 52, so the 96 px next to it were empty.
+
+That width is also what decides the contents. The block sits right-aligned in
+that gap, and measured in the browser at `100 %` on both readings it wants
+107 px with both numbers written out — 167 px for the line against 148 px of
+column, and this column dictates the width of the whole header block, so the
+overflow would not stay local. With the battery carrying the number and the
+signal only its bars it is 53 px at worst, 113 px for the line, 35 px to spare.
+Which is the same trade the room tiles make and the same one
+[Grayscale](#grayscale) states: the glyph carries the reading, the number is the
+extra.
 
 Both glyphs are axis-aligned rectangles on an integer grid at their final size
-(26x14 and 16x14), unlike the weather icons, which are curves scaled by their
-wrapper. At 14 px a stroked outline or a WiFi arc lands on half pixels, and the
-antialiasing that follows is exactly what the 2-bit quantizer turns into
-speckle. The battery fill sits one pixel inside the shell, which is not
-cosmetic: without that gutter a black low-charge fill merges with the black
-border and 20 % reads as an empty battery.
+(16x10 and 12x10, down from 26x14 and 16x14), unlike the weather icons, which
+are curves scaled by their wrapper. At 10 px a stroked outline or a WiFi arc
+lands on half pixels, and the antialiasing that follows is exactly what the
+2-bit quantizer turns into speckle. The battery fill sits one pixel inside the
+shell, which is not cosmetic: without that gutter a black low-charge fill merges
+with the black border and 20 % reads as an empty battery.
 
 ### Lines that appear only when they have something to say
 

@@ -155,7 +155,55 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
   ist der Grund, dass es schmal sein darf — vorher stand alles in einer Zeile und
   die diktierte die Breite des ganzen Blocks {%- endcomment -%}
   <span style="display:flex;flex-direction:column;justify-content:space-between;width:148px;flex:none">
-    <span style="display:inline-block;width:52px;height:52px">{{ icon_now }}</span>
+    {%- comment -%} Der Zustand des Panels teilt sich die Zeile mit dem Wetterzeichen:
+    rechts oben, auf Höhe der Oberkante des Zeichens. Er stand vorher als eigene Kachel
+    im Raumraster, wo er so breit und so hoch war wie ein Raum -- für zwei Zahlen, die
+    nichts über die Wohnung sagen, sondern über das Gerät, das sie anzeigt. Hier kostet
+    er keine Zeile: die 96 px neben dem 52 px breiten Zeichen waren leer.
+
+    Das ist auch die Breite, die alles diktiert, und sie reicht nicht für beide Zahlen.
+    Mit Prozentzeichen an beiden braucht der Block bei 100 % auf beiden gemessene
+    107 px, die Zeile damit 167 px gegen die 148 px der Spalte -- und diese Spalte gibt
+    dem ganzen Kopfblock seine Breite vor. Also trägt die Batterie die Zahl und die
+    Feldstärke nur ihre Balken: so sind es 53 px im schlechtesten Fall, 113 px für die
+    Zeile, und 35 px bleiben übrig. Die Balken sagen ohnehin, was zu tun ist -- der
+    Grundsatz steht schon so im README: der Glyph trägt den Messwert, die Zahl ist die
+    Zugabe {%- endcomment -%}
+    {%- assign bat = extension.device.battery_percentage -%}
+    {%- assign wifi = extension.device.wifi_percentage -%}
+    <span style="display:flex;flex-direction:row;align-items:flex-start;justify-content:space-between;width:100%;gap:8px">
+      <span style="display:inline-block;width:52px;height:52px;flex:none">{{ icon_now }}</span>
+      {%- if bat or wifi -%}
+      <span style="display:flex;flex-direction:row;align-items:center;gap:5px;flex:none;white-space:nowrap;margin-top:2px;font-family:var(--label-small-font-family);font-size:var(--label-small-font-size);line-height:1">
+        {%- comment -%} Dieselbe Batterie wie vorher, von 26x14 auf 16x10 gebracht und
+        dabei wieder auf ganze Pixel gelegt: Mantel 13x10, Deckel 3x4, Füllung höchstens
+        9 px breit. Die Schwelle bleibt, schwarz ab 20 % abwärts {%- endcomment -%}
+        {%- assign bfill = bat | times: 9 | divided_by: 100 -%}
+        <span style="display:inline-block;width:16px;height:10px;flex:none">
+          <svg viewBox="0 0 16 10" width="16" height="10">
+            <rect x="0" y="0" width="13" height="10" fill="#000000"/>
+            <rect x="1" y="1" width="11" height="8" fill="#FFFFFF"/>
+            <rect x="13" y="3" width="3" height="4" fill="#000000"/>
+            {%- if bfill > 0 -%}<rect x="2" y="2" width="{{ bfill }}" height="6" fill="{% if bat <= 20 %}#000000{% else %}#555555{% endif %}"/>{%- endif -%}
+          </svg>
+        </span>
+        {%- if bat > 0 -%}<span>{{ bat }}<span style="color:#555555">&nbsp;%</span></span>
+        {%- else -%}<span style="color:#555555">&mdash;</span>{%- endif -%}
+        {%- comment -%} Die Balken in der Form und den Schwellen der Raumkacheln, nur
+        ohne Zahl. Kein Messwert, keine Balken -- drei leere Balken hiessen "schwach",
+        und das ist etwas anderes als "noch nichts gemeldet" {%- endcomment -%}
+        {%- if wifi > 0 -%}
+        <span style="display:inline-block;width:12px;height:10px;flex:none">
+          <svg viewBox="0 0 12 10" width="12" height="10">
+            <rect x="0" y="6" width="3" height="4" fill="{% if wifi >= 20 %}#000000{% else %}#AAAAAA{% endif %}"/>
+            <rect x="4" y="3" width="3" height="7" fill="{% if wifi >= 40 %}#000000{% else %}#AAAAAA{% endif %}"/>
+            <rect x="8" y="0" width="3" height="10" fill="{% if wifi >= 60 %}#000000{% else %}#AAAAAA{% endif %}"/>
+          </svg>
+        </span>
+        {%- endif -%}
+      </span>
+      {%- endif -%}
+    </span>
     <span style="display:flex;flex-direction:column">
     {%- comment -%} Gefühlte Temperatur nur bei mindestens 3 Grad Unterschied, und
     neben die große Zahl statt in eine eigene Zeile — daneben ist Platz, darunter nicht.
@@ -319,7 +367,9 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
 
 <div style="display:flex;flex-direction:row;align-items:flex-start;flex:1;width:100%;margin-top:5px;gap:18px">
 
-  {%- comment -%} Linke Spalte: Räume als 2x3-Raster, das Panel selbst als letzte Kachel {%- endcomment -%}
+  {%- comment -%} Linke Spalte: die Räume als 2x3-Raster. Die sechste Kachel gehörte
+  dem Panel und ist frei, seit sein Zustand oben neben dem Wetterzeichen steht --
+  der nächste Raum bekommt sie {%- endcomment -%}
   <span style="display:flex;flex-direction:column;flex:1;min-width:0">
     <span class="label label--underline" style="width:100%">Räume</span>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;margin-top:4px;width:100%">
@@ -476,38 +526,6 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
           {%- endif -%}
         </span>
       {%- endfor -%}
-      {%- comment -%} Das Panel als eigene Kachel: rutscht mit, wenn Räume dazukommen {%- endcomment -%}
-      {%- assign bat = extension.device.battery_percentage -%}
-      {%- assign wifi = extension.device.wifi_percentage -%}
-      {%- if bat or wifi -%}
-      <span style="display:flex;flex-direction:column;align-items:flex-start">
-        <span class="label label--small" style="color:#555555">Panel</span>
-        <span style="display:flex;flex-direction:row;align-items:center;gap:5px;margin-top:3px;font-family:var(--label-small-font-family);font-size:var(--label-small-font-size);line-height:1">
-          {%- assign bfill = bat | times: 16 | divided_by: 100 -%}
-          <span style="display:inline-block;width:26px;height:14px;flex:none">
-            <svg viewBox="0 0 26 14" width="26" height="14">
-              <rect x="0" y="0" width="22" height="14" fill="#000000"/>
-              <rect x="2" y="2" width="18" height="10" fill="#FFFFFF"/>
-              <rect x="22" y="4" width="4" height="6" fill="#000000"/>
-              {%- if bfill > 0 -%}<rect x="3" y="3" width="{{ bfill }}" height="8" fill="{% if bat <= 20 %}#000000{% else %}#555555{% endif %}"/>{%- endif -%}
-            </svg>
-          </span>
-          {%- if bat > 0 -%}<span>{{ bat }}<span style="color:#555555">&nbsp;%</span></span>
-          {%- else -%}<span style="color:#555555">&mdash;</span>{%- endif -%}
-        </span>
-        <span style="display:flex;flex-direction:row;align-items:center;gap:5px;margin-top:4px;font-family:var(--label-small-font-family);font-size:var(--label-small-font-size);line-height:1">
-          <span style="display:inline-block;width:16px;height:14px;flex:none">
-            <svg viewBox="0 0 16 14" width="16" height="14">
-              <rect x="0" y="9" width="4" height="5" fill="{% if wifi >= 20 %}#000000{% else %}#AAAAAA{% endif %}"/>
-              <rect x="6" y="5" width="4" height="9" fill="{% if wifi >= 40 %}#000000{% else %}#AAAAAA{% endif %}"/>
-              <rect x="12" y="1" width="4" height="13" fill="{% if wifi >= 60 %}#000000{% else %}#AAAAAA{% endif %}"/>
-            </svg>
-          </span>
-          {%- if wifi > 0 -%}<span>{{ wifi }}<span style="color:#555555">&nbsp;%</span></span>
-          {%- else -%}<span style="color:#555555">&mdash;</span>{%- endif -%}
-        </span>
-      </span>
-      {%- endif -%}
     </div>
   </span>
 
