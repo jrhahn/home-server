@@ -261,12 +261,16 @@ einmal definiert, dreimal ausgegeben — die Karten teilen dieselbe Geometrie {%
     </span>
     <span class="label label--small">
       {%- case wc -%}
-      {%- when 0 -%}klar{%- when 1 -%}überwiegend klar{%- when 2 -%}wechselnd bewölkt
+      {%- when 0 -%}klar{%- when 1 -%}meist klar{%- when 2 -%}teils bewölkt
       {%- when 3 -%}bedeckt{%- when 45, 48 -%}Nebel
       {%- when 51, 53, 55, 56, 57 -%}Niesel{%- when 61, 63, 65, 66, 67 -%}Regen
       {%- when 71, 73, 75, 77 -%}Schnee{%- when 80, 81, 82 -%}Schauer
       {%- when 85, 86 -%}Schneeschauer{%- when 95, 96, 99 -%}Gewitter
-      {%- else -%}&mdash;{%- endcase %} &middot; {{ cur.relative_humidity_2m }}&nbsp;% rF
+      {%- comment -%} Auch `%&nbsp;rF` haengt zusammen, nicht nur die Zahl an ihrem
+      Prozentzeichen: bricht die Zeile doch einmal um, faellt der Umbruch dann hinter
+      den Mittelpunkt statt zwischen `%` und `rF`, und `rF` steht nicht allein in der
+      zweiten Zeile {%- endcomment -%}
+      {%- else -%}&mdash;{%- endcase %} &middot; {{ cur.relative_humidity_2m }}&nbsp;%&nbsp;rF
     </span>
     {%- comment -%} Windrichtung meteorologisch: der Pfeil zeigt, wohin der Wind
     weht (Richtung + 180), der Text nennt woher er kommt. Achtsektoren, damit

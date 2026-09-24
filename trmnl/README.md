@@ -604,6 +604,30 @@ The worst case decides the budget, not the common one: with gusts over 40 km/h
 Both states are worth rendering after a change — real data is usually the quiet
 one, and the loud one is where the layout breaks.
 
+### The condition line has to fit in one line
+
+`meist klar · 42 % rF` is the condition word, the separator and the humidity, and
+the column is 148 px. Measured for all eleven words the `case` can produce, the
+widest is `Schneeschauer · 100 % rF` at exactly 148 px; `bedeckt · 61 % rF` is
+98 px.
+
+Two of the words used to be longer than that and wrapped: `überwiegend klar`
+needed 154 px and `wechselnd bewölkt` 164 px. What that looked like on the panel
+was not a wrapped sentence but the two letters `rF` alone on a line of their
+own, because the only break opportunity late enough in the line was the space in
+front of them. They are now `meist klar` and `teils bewölkt`, which is also
+closer to what the WMO codes say — 1 is *mainly clear* and 2 is *partly cloudy*,
+not *variable cloudiness*.
+
+`%&nbsp;rF` is glued together for the same reason, and it is the part that keeps
+this from breaking badly again. Should a future word or a wider font push the
+line over anyway, the last remaining break is the space after the middle dot, so
+the humidity moves down whole rather than shedding its unit.
+
+Widening the column is not the way out of this: it is 148 px because the
+sunrise/sunset line was broken in two to make it that narrow, and every pixel it
+takes comes off the five-day row and the hourly strip beside it.
+
 ### Wind
 
 Two places, because there was room for two and no more.
