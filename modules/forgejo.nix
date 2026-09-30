@@ -43,7 +43,17 @@ in
         HTTP_ADDR = forgejoAddress;
         HTTP_PORT = forgejoPort;
         SSH_DOMAIN = server.gitDomain;
-        SSH_PORT = 22;
+
+        # Git-SSH laeuft auf Forgejos eingebautem Server auf 2222, nicht ueber
+        # den System-sshd auf 22. Grund: Tailscale SSH (siehe base.nix) faengt
+        # Port 22 auf der Tailnet-IP ab. Je nach ACL vergibt es dort eine Shell
+        # als `forgejo` oder lehnt ab -- in beiden Faellen kommt Forgejos forced
+        # command nie zum Zug und Git ueber das Tailnet schlaegt fehl. Port 2222
+        # bleibt davon unberuehrt, ohne dass der Notzugang ueber Tailscale SSH
+        # angetastet werden muss.
+        START_SSH_SERVER = true;
+        SSH_PORT = 2222;
+        SSH_LISTEN_PORT = 2222;
       };
 
       service = {
@@ -79,6 +89,10 @@ in
       ];
     };
   };
+
+  # Git-SSH (Forgejos eingebauter Server, siehe START_SSH_SERVER oben). Der
+  # System-sshd auf Port 22 bleibt unveraendert.
+  networking.firewall.allowedTCPPorts = [ 2222 ];
 
   services.nginx.virtualHosts.${server.gitDomain} = {
     enableACME = server.enablePublicTls;
