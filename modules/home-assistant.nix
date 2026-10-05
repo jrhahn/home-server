@@ -355,6 +355,122 @@ in
           ];
         }
         {
+          # The rebuilt solar garden light: the one node in the fleet whose job
+          # is to emit rather than to measure. Discovered like everything else
+          # -- the node id is `solarleuchte`, so the entities are
+          # `Solarleuchte <name>` through Home Assistant's slugify.
+          #
+          # Its own view rather than a card under "Terrasse", which is the
+          # feeder scale and shares nothing with this but a patch of garden.
+          title = "Solarleuchte";
+          path = "solarleuchte";
+          icon = "mdi:outdoor-lamp";
+          cards = [
+            {
+              # The light itself, as one entity: the firmware announces a
+              # `light` with `on_cmd_type: brightness`, not a switch beside a
+              # slider, so this card's dial is the whole control surface.
+              #
+              # 100 % here is not full power. Brightness is a *factor* on the
+              # firmware's compiled ceiling (`lamp::MAX_DUTY_PCT`, 70 %), which
+              # exists because the string draws 640 mA flat out against a
+              # 20 mA-rated average. Nothing on this dashboard can raise it.
+              type = "light";
+              entity = "light.solarleuchte_licht";
+              name = "Solarleuchte";
+            }
+            {
+              # The cell, and the three bands are the firmware's own gate
+              # (`lamp::charge_permille`): below 20 % the lamp stays dark, from
+              # 90 % it gets the full ceiling, and in between it dims linearly.
+              # So red here means "will not light tonight", yellow means
+              # "lights, dimmed", green means "lights as bright as it may".
+              #
+              # That gate is also the whole weather model -- panel aspect,
+              # shading and the last week of cloud all land in the cell -- so
+              # this gauge is the closest thing to a forecast the lamp has.
+              type = "gauge";
+              entity = "sensor.solarleuchte_batterie_ladestand";
+              name = "Ladestand";
+              unit = "%";
+              min = 0;
+              max = 100;
+              severity = {
+                red = 0;
+                yellow = 20;
+                green = 90;
+              };
+            }
+            {
+              type = "glance";
+              title = "Zustand";
+              state_color = true;
+              columns = 3;
+              entities = [
+                {
+                  # The measurement behind the gauge. Same caveat as on the
+                  # feeder: the percentage is an estimate off this number and
+                  # is soft between 3.7 and 4.0 V, where most of the capacity
+                  # and almost none of the swing lives.
+                  entity = "sensor.solarleuchte_batterie_spannung";
+                  name = "Spannung";
+                }
+                {
+                  entity = "sensor.solarleuchte_signal";
+                  name = "Signal";
+                }
+                {
+                  # Published as dBm and as a count respectively, both only
+                  # while the lamp is awake -- see the history note below.
+                  entity = "sensor.solarleuchte_kaltstarts";
+                  name = "Kaltstarts";
+                }
+              ];
+            }
+            {
+              # Three evenings rather than 24 h, and that is not a preference:
+              # this node wakes once at dusk, publishes every five minutes for
+              # the length of the evening, and sleeps through the whole day. A
+              # 24-hour window is therefore mostly gap, and the gap is deep
+              # sleep rather than a dropout. Three windows make the trend
+              # across evenings -- which is the thing worth seeing, because
+              # that is what the charge gate is reading.
+              type = "history-graph";
+              title = "Verlauf (72 h)";
+              hours_to_show = 72;
+              entities = [
+                { entity = "sensor.solarleuchte_batterie_ladestand"; }
+                { entity = "sensor.solarleuchte_batterie_spannung"; }
+              ];
+            }
+            {
+              # Diagnostics only. Deliberately *not* here: the four
+              # `number.solarleuchte_*_intervall` knobs and
+              # `switch.solarleuchte_deep_sleep`. Discovery announces them
+              # because the node is on a battery and sleeps -- the firmware's
+              # entity table keys them off the power profile -- but `run_lamp`
+              # reads neither: its cadence is compiled in (30 s gate tick,
+              # 300 s publish) and its sleep is "until the next dusk". Putting
+              # them on a dashboard would offer five controls that do nothing.
+              #
+              # They remain reachable on the device page if a future firmware
+              # starts honouring them.
+              type = "entities";
+              title = "Diagnose";
+              show_header_toggle = false;
+              entities = [
+                { entity = "sensor.solarleuchte_reset_grund"; }
+                { entity = "sensor.solarleuchte_unerwartete_resets"; }
+                { type = "divider"; }
+                # Same escape hatch as on the feeder, and this node needs it
+                # more: it connects once a day, so a retained config that never
+                # arrived would otherwise cost an evening per retry.
+                { entity = "button.solarleuchte_discovery_neu_ankundigen"; }
+              ];
+            }
+          ];
+        }
+        {
           # The rest of the rs-smarthome-nodes fleet. Like the terrace view
           # above, none of it is declared in nix: each node publishes MQTT
           # discovery configs and Home Assistant creates the device itself.
