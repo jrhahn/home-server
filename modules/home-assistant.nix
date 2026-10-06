@@ -49,13 +49,34 @@ let
   # Brightness is not part of this. Switching on, switching off and dimming
   # stay manual.
   curveAnchors = [
-    [ 0 2200 ] # midnight
-    [ 420 2200 ] # 07:00, still night colour
-    [ 510 5000 ] # 08:30, full daylight
-    [ 720 5000 ] # 12:00, held
-    [ 1080 4000 ] # 18:00
-    [ 1320 2200 ] # 22:00
-    [ 1440 2200 ] # midnight
+    [
+      0
+      2200
+    ] # midnight
+    [
+      420
+      2200
+    ] # 07:00, still night colour
+    [
+      510
+      5000
+    ] # 08:30, full daylight
+    [
+      720
+      5000
+    ] # 12:00, held
+    [
+      1080
+      4000
+    ] # 18:00
+    [
+      1320
+      2200
+    ] # 22:00
+    [
+      1440
+      2200
+    ] # midnight
   ];
 
   # Sets ns.k to the target kelvin for right now. Prefixed to both expressions
@@ -97,6 +118,96 @@ let
     {% endfor %}
     {{ out.l }}
   '';
+  # The SONOFF S60ZBTPF metering plug. It is a ZHA device, so it exists only as
+  # a Home Assistant entity: ZHA talks to the radio directly and publishes
+  # nothing to MQTT, which means smarthome-timeseries -- a subscriber on the
+  # broker, never a Home Assistant client -- cannot see a single reading of it.
+  # Nothing anywhere reports that as an error. The plug would simply never
+  # appear on iot.home.arpa.
+  #
+  # So Home Assistant republishes it, in the fleet's own topic layout
+  # (`smarthome/<node>/<key>`, one scalar per topic). To the archiver the plug
+  # is then indistinguishable from an ESP32 node, and needs no code there.
+  plugNode = "strommessung_arbeitsecke";
+  plugDevice = {
+    ids = [ plugNode ];
+    name = "Strommessung Arbeitsecke";
+    mf = "SONOFF";
+    mdl = "S60ZBTPF";
+  };
+
+  # ZHA entity -> the key it is archived under. These ids are Home Assistant's
+  # slug of the name the device was given while pairing; if it was called
+  # something else, correct them here (Developer Tools -> States) rather than
+  # renaming the device, since renaming does not change an existing slug.
+  plugChannels = {
+    "sensor.strommessung_arbeitsecke_power" = {
+      key = "power";
+      name = "Leistung";
+      unit = "W";
+      deviceClass = "power";
+      # Instantaneous, and it goes both ways.
+      stateClass = "measurement";
+    };
+    # ZHA names this one after the ZCL attribute it reads (seMetering's
+    # CurrentSummationDelivered), not after what it measures. It is archived as
+    # `energy` regardless -- the topic layout is the fleet's, not the radio's.
+    "sensor.strommessung_arbeitsecke_summation_delivered" = {
+      key = "energy";
+      name = "Energie";
+      unit = "kWh";
+      deviceClass = "energy";
+      # The plug's own lifetime counter, which drops back to zero whenever it
+      # loses power or rejoins the mesh. `total_increasing` is the declaration
+      # that a backwards step is a reset rather than negative consumption.
+      stateClass = "total_increasing";
+    };
+    # Not what the plug was bought for, but it reports both anyway, and they are
+    # what tells a quiet load apart from a plug that has stopped reporting:
+    # mains voltage is there whether anything is drawing or not.
+    "sensor.strommessung_arbeitsecke_voltage" = {
+      key = "voltage";
+      name = "Spannung";
+      unit = "V";
+      deviceClass = "voltage";
+      stateClass = "measurement";
+    };
+    "sensor.strommessung_arbeitsecke_current" = {
+      key = "current";
+      name = "Stromstärke";
+      unit = "A";
+      deviceClass = "current";
+      stateClass = "measurement";
+    };
+  };
+
+  # iot.home.arpa has no configuration of its own for display names, units or
+  # decimals: it reads all three out of the retained discovery configs, the same
+  # ones the firmware publishes for every node. Without these the plug shows up
+  # as "strommessung_arbeitsecke / power", a bare number with no unit.
+  #
+  # `enabled_by_default = false` registers the entity disabled. Home Assistant
+  # reads these configs too, and would otherwise grow a second, MQTT-backed
+  # copy of every ZHA sensor here -- the same number listed twice, from two
+  # integrations. The archiver only ever reads the config, never the entity, so
+  # disabling it costs nothing on that side.
+  plugDiscovery =
+    ch:
+    builtins.toJSON {
+      # Spelled out rather than in Home Assistant's abbreviations (`stat_t`,
+      # `dev_cla`, ...) the way the firmware writes them. Those exist to save
+      # bytes on a board with a 256-byte publish buffer; this payload is built
+      # by Home Assistant itself, where nothing is scarce and the long names
+      # simply read better. The archiver accepts either spelling.
+      name = ch.name;
+      unique_id = "${plugNode}_${ch.key}";
+      state_topic = "smarthome/${plugNode}/${ch.key}";
+      unit_of_measurement = ch.unit;
+      device_class = ch.deviceClass;
+      state_class = ch.stateClass;
+      enabled_by_default = false;
+      device = plugDevice;
+    };
 in
 {
   services.home-assistant = {
@@ -238,6 +349,116 @@ in
               data.color_temp_kelvin = kelvinExpr;
             }
           ];
+        }
+
+        {
+          id = "steckdose_messwerte_nach_mqtt";
+          alias = "Steckdose: Messwerte nach MQTT";
+          description = "Republishes the ZHA metering plug's power and energy readings as smarthome/<node>/<key>, so smarthome-timeseries archives them like any node of the fleet.";
+          # Several of these change in the same tick; queued rather than single
+          # so no publish is dropped.
+          mode = "queued";
+          max = 25;
+          triggers = [
+            {
+              # The ZHA entities, and only those. The MQTT entities that these
+              # publishes create must never appear in this list -- that is the
+              # loop, and it would run as fast as the broker answers.
+              trigger = "state";
+              entity_id = builtins.attrNames plugChannels;
+            }
+          ];
+          conditions = [
+            {
+              # A state trigger with no `to`/`from` also fires on attribute-only
+              # changes, which would archive the same reading a second time.
+              condition = "template";
+              value_template = "{{ trigger.to_state.state != trigger.from_state.state }}";
+            }
+          ];
+          actions = [
+            {
+              action = "mqtt.publish";
+              data = {
+                # The key is looked up rather than cut off the entity id: a
+                # missing entry fails loudly here instead of quietly archiving
+                # readings under a sensor called "arbeitsecke".
+                topic = "smarthome/${plugNode}/{{ ${
+                  builtins.toJSON (lib.mapAttrs (_: ch: ch.key) plugChannels)
+                }[trigger.entity_id] }}";
+                payload = "{{ trigger.to_state.state }}";
+                # Never retained. The archiver skips retained readings by
+                # design: the broker replays them on reconnect, and the only
+                # timestamp available there is "now", so a replay would stamp a
+                # stale value as current.
+                retain = false;
+              };
+              # `unavailable` and `unknown` need no condition. They are
+              # published, and the archiver's parse_value drops any payload that
+              # is not a number.
+            }
+          ];
+        }
+        {
+          id = "steckdose_messwerte_zyklisch";
+          alias = "Steckdose: Messwerte zyklisch nach MQTT";
+          description = "Publishes every channel of the metering plug once a minute, whether it moved or not, so a flat reading is still archived.";
+          # The automation above only fires when a value *changes*, and three of
+          # these four routinely do not: a plug sitting at 8 W reports 8 W again
+          # and Home Assistant records that as `last_reported`, not as a state
+          # change. Without this tick the archive would hold a single sample
+          # from whenever the load last moved, and the chart would be one dot.
+          #
+          # This is what the firmware does for every node -- publish on a timer,
+          # not on a delta -- and the reason is the same: a line that is flat is
+          # a measurement, and "no data" and "unchanged" have to look different
+          # on the dashboard.
+          mode = "single";
+          max_exceeded = "silent";
+          triggers = [
+            {
+              trigger = "time_pattern";
+              minutes = "/1";
+            }
+          ];
+          actions = lib.mapAttrsToList (entity: ch: {
+            action = "mqtt.publish";
+            data = {
+              topic = "smarthome/${plugNode}/${ch.key}";
+              payload = "{{ states('${entity}') }}";
+              retain = false;
+            };
+          }) plugChannels;
+        }
+        {
+          id = "steckdose_discovery_veroeffentlichen";
+          alias = "Steckdose: Discovery-Konfigurationen veröffentlichen";
+          description = "Publishes the retained MQTT discovery configs for the plug's archived channels, which is where iot.home.arpa gets their names and units from.";
+          mode = "single";
+          triggers = [
+            {
+              trigger = "homeassistant";
+              event = "start";
+            }
+          ];
+          actions = [
+            {
+              # The MQTT client is not necessarily connected the moment the
+              # start event fires, and a publish issued before it is, is lost
+              # without a word.
+              delay.seconds = 30;
+            }
+          ]
+          ++ lib.mapAttrsToList (_: ch: {
+            action = "mqtt.publish";
+            data = {
+              topic = "homeassistant/sensor/${plugNode}/${ch.key}/config";
+              payload = plugDiscovery ch;
+              # Retained: a declaration, and it has to still be on the broker
+              # when the archiver or Home Assistant next reconnects.
+              retain = true;
+            };
+          }) plugChannels;
         }
       ];
 
