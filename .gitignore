@@ -3,3 +3,4 @@
 .env
 .envrc.local
 __pycache__/
+graphify-out/
