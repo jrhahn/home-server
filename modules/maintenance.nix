@@ -9,6 +9,7 @@
 let
   hetzner = server.backups.hetzner or { enable = false; };
   notify = server.backups.notify or { enable = false; };
+  aiTrainer = server.backups.aiTrainer or { enable = false; };
   hetznerRepo = suffix: "ssh://${hetzner.user}@${hetzner.host}:23/./${hetzner.repoPrefix}/${suffix}";
   familyPaths = [
     "/var/lib/secrets"
@@ -28,7 +29,11 @@ let
   # copy on disk. See `questdbCheckpoint` below.
   ++ lib.optionals server.smarthomeTimeseries.enable [
     config.services.smarthome-timeseries.questdb.dataDir
-  ];
+  ]
+  # ai-trainer runs on its own host and is in none of these paths otherwise.
+  # `fetch-ai-trainer-backup` below drops its artefacts here, already encrypted
+  # with their own passphrase, and they ride along with everything else.
+  ++ lib.optionals aiTrainer.enable [ aiTrainer.localDir ];
   haPaths = [ "/srv/home-assistant" ];
   familyExclude = [
     # Seafile's Redis rewrites its append-only file while borg reads it, which
@@ -194,6 +199,100 @@ lib.mkMerge [
       };
     };
   }
+
+  (lib.mkIf aiTrainer.enable {
+    systemd.tmpfiles.rules = [
+      # 0700: the artefacts are GPG-encrypted, but the manifests beside them name
+      # this deployment's schema and key fingerprints, and there is no reason for
+      # anything but root to read any of it.
+      "d ${aiTrainer.localDir} 0700 root root -"
+    ];
+
+    systemd.services.fetch-ai-trainer-backup = {
+      description = "Fetch ai-trainer's backup artefacts from its own host";
+      startAt = aiTrainer.startAt;
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
+      onFailure = lib.optionals (notify.enable && hetzner.enable) [
+        "ai-trainer-backup-failed.service"
+      ];
+      serviceConfig = {
+        Type = "oneshot";
+        User = "root";
+        UMask = "0077";
+      };
+      script = ''
+        set -euo pipefail
+
+        ssh_opts="-i ${aiTrainer.sshKeyFile} -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
+        remote='${aiTrainer.user}@${aiTrainer.host}'
+
+        # Read-only from this side. The remote host takes its own backup on its
+        # own timer; this only collects the result, so the key on the far end can
+        # be pinned to `rsync --server --sender` and nothing else. The far end in
+        # turn holds no credentials for where these end up, which is the whole
+        # reason this is a pull: a compromise of the host holding the data cannot
+        # reach the backups of it.
+        ${pkgs.rsync}/bin/rsync \
+          --archive --compress --itemize-changes \
+          -e "${pkgs.openssh}/bin/ssh $ssh_opts" \
+          "$remote:${aiTrainer.remoteDir}/" '${aiTrainer.localDir}/'
+
+        # A fetch that succeeds against a stale directory is exactly the failure
+        # this arrangement exists to prevent: borg would archive last week's
+        # artefacts every night and report success, and the first time anyone
+        # looked would be the restore. So no recent manifest is an error here,
+        # where it mails, rather than a shrug.
+        if [ -z "$(${pkgs.findutils}/bin/find '${aiTrainer.localDir}' \
+                     -maxdepth 1 -name '*.manifest.json' -mtime -2 -print -quit)" ]; then
+          echo "No ai-trainer manifest newer than two days in ${aiTrainer.localDir}." >&2
+          echo "The remote host's own backup timer has not run, or produced nothing." >&2
+          echo "Check: systemctl status ai-trainer-backup.timer on ${aiTrainer.host}" >&2
+          exit 1
+        fi
+
+        # Bound the staging copy only. Borg keeps 7 daily / 4 weekly / 12 monthly
+        # of its own, so this is about not filling a disk, not about retention.
+        ${pkgs.findutils}/bin/find '${aiTrainer.localDir}' \
+          -mindepth 1 -maxdepth 1 -type f -mtime +${toString aiTrainer.keepDays} -delete
+
+        echo "ai-trainer artefacts present:"
+        ${pkgs.coreutils}/bin/ls -1 '${aiTrainer.localDir}' | ${pkgs.coreutils}/bin/tail -6
+      '';
+    };
+  })
+
+  (lib.mkIf (aiTrainer.enable && notify.enable && hetzner.enable) {
+    # Its own mail rather than a case in borg-notify@, which is parameterised on
+    # borg job names and reads their units. Wired onFailure only: a nightly
+    # "fetch worked" adds nothing to the backup mail that follows it half an
+    # hour later, while a silent failure is the thing worth an interruption.
+    systemd.services.ai-trainer-backup-failed = {
+      description = "Email that fetching ai-trainer's backup failed";
+      serviceConfig.Type = "oneshot";
+      script = ''
+        host='${config.networking.hostName}'
+        when="$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S %Z')"
+        result="$(${pkgs.systemd}/bin/systemctl show fetch-ai-trainer-backup.service -p Result --value)"
+        errlines="$(${pkgs.systemd}/bin/journalctl -o cat -u fetch-ai-trainer-backup.service -n 40 2>/dev/null \
+          | ${pkgs.coreutils}/bin/tail -n 15 || true)"
+
+        {
+          printf 'From: %s\n' '${notify.from}'
+          printf 'To: %s\n' '${notify.to}'
+          printf 'Subject: [BACKUP FAILED] ai-trainer fetch (%s) @ %s\n\n' "$result" "$host"
+          printf 'ai-trainer backup artefacts were not fetched.\n\n'
+          printf 'Remote:  %s@%s:%s\n' '${aiTrainer.user}' '${aiTrainer.host}' '${aiTrainer.remoteDir}'
+          printf 'Local:   %s\n' '${aiTrainer.localDir}'
+          printf 'When:    %s\n\n' "$when"
+          printf 'Until this works, the family Borg job is archiving whatever is\n'
+          printf 'already in the local directory -- possibly nothing, possibly old.\n'
+          printf 'See docs/runbook-restore.md in the ai-trainer repo.\n\n'
+          printf 'Journal:\n%s\n' "$errlines"
+        } | ${pkgs.msmtp}/bin/msmtp -C /etc/msmtprc -a default '${notify.to}'
+      '';
+    };
+  })
 
   (lib.mkIf (notify.enable && hetzner.enable) (
     let

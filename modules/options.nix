@@ -400,6 +400,80 @@ in
       };
     };
 
+    backups.aiTrainer = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Fetch the ai-trainer backup from its own host and include it in the
+          family Borg jobs.
+
+          Pulled rather than pushed, which is the point of doing it from here:
+          the production host then holds no Storage Box credentials, so a
+          compromise of it cannot reach or delete the backups of the data it was
+          holding. The cost is that this server has to be up for a backup to
+          happen, which the staleness check and the failure mail cover.
+
+          The artefacts arrive already encrypted with their own GPG passphrase
+          (ai-trainer's scripts/backup.sh), so this server can store ai-trainer's
+          secrets bundle without being able to read it.
+        '';
+      };
+      host = mkOption {
+        type = types.str;
+        default = "";
+        example = "trainlikea.pro";
+        description = "Host running ai-trainer, reachable over SSH from here.";
+      };
+      user = mkOption {
+        type = types.str;
+        default = "root";
+        description = ''
+          SSH user on that host. Needs to read its .env (mode 0600, root-owned)
+          and talk to Docker, hence root by default — constrain the key with a
+          forced command rather than widening the account. ai-trainer ships
+          scripts/backup-over-ssh.sh for exactly that.
+        '';
+      };
+      sshKeyFile = mkOption {
+        type = types.str;
+        default = "/var/lib/secrets/ai-trainer-backup-ed25519";
+        description = "SSH key for that host, kept on the server, not in the Nix store.";
+      };
+      remoteDir = mkOption {
+        type = types.str;
+        default = "/var/backups/ai-trainer";
+        description = "Where backup.sh writes its artefacts on the remote host.";
+      };
+      localDir = mkOption {
+        type = types.str;
+        default = "/srv/backups/ai-trainer";
+        description = ''
+          Where they land here. Added to the family Borg paths, following the
+          same "dump to a directory, let borg pick it up" shape as
+          /srv/backups/database-dumps.
+        '';
+      };
+      startAt = mkOption {
+        type = types.str;
+        default = "03:30";
+        description = ''
+          Before the 04:00 local job, so each night's Borg run carries that
+          night's artefacts. Deliberately not hooked into the jobs' preHooks:
+          that would run a pg_dump on the production host twice a night, once
+          for each Borg job.
+        '';
+      };
+      keepDays = mkOption {
+        type = types.int;
+        default = 14;
+        description = ''
+          How long fetched artefacts stay here. Borg has its own retention
+          (7 daily / 4 weekly / 12 monthly); this only bounds the staging copy.
+        '';
+      };
+    };
+
     backups.hetzner = {
       enable = mkOption {
         type = types.bool;
@@ -508,6 +582,17 @@ in
             && cfg.backups.notify.smtpUser != ""
           );
         message = "server.backups.notify.enable requires to, from, smtpHost, and smtpUser to be set.";
+      }
+      {
+        assertion = !cfg.backups.aiTrainer.enable || cfg.backups.aiTrainer.host != "";
+        message = "server.backups.aiTrainer.enable requires server.backups.aiTrainer.host to be set.";
+      }
+      {
+        # Fetching it here and not sending it anywhere would leave the only copy
+        # on the same disk as everything else, which is not a backup of a remote
+        # host — it is a second local copy that one disk failure takes with it.
+        assertion = !cfg.backups.aiTrainer.enable || cfg.backups.hetzner.enable;
+        message = "server.backups.aiTrainer.enable needs server.backups.hetzner.enable: the fetched artefacts leave this machine through the family Borg job, and without the Storage Box they never leave it at all.";
       }
     ];
   };
