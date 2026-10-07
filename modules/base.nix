@@ -99,7 +99,75 @@ in
   # (duplicated/garbled input) and prints "can't find terminal definition".
   environment.enableAllTerminfo = true;
 
-  environment.systemPackages = with pkgs; [
+  # Let a program on this machine put something on the clipboard of the laptop
+  # actually being typed at. Over ssh there is no shared X display and no
+  # pbcopy, so the only path is OSC 52: the escape sequence that asks the
+  # *terminal emulator* to set its own clipboard, which travels back up the ssh
+  # connection as ordinary output.
+  #
+  # The default was `external`, which is the one value that does not work here:
+  # tmux then sets the clipboard for its own copy-mode but ignores OSC 52 coming
+  # from applications in a pane -- so `something | clip` was silently a no-op
+  # while mouse-selecting worked, which reads as "the clipboard is broken" and
+  # is really "the clipboard is broken for programs". `on` accepts both.
+  programs.tmux = {
+    enable = true;
+    clock24 = true;
+    historyLimit = 50000;
+    # Both of these are what a tmux with no config already does, and both are
+    # worse in programs.tmux: it defaults terminal to "screen", which costs
+    # 256 colours, and escapeTime to 500 ms, which makes Esc in vim feel stuck.
+    # Stated so that turning this module on does not quietly downgrade a session
+    # that was fine before.
+    terminal = "tmux-256color";
+    escapeTime = 10;
+    extraConfig = ''
+      set -g set-clipboard on
+
+      # DCS passthrough, for a program that wraps its own escape sequences for
+      # tmux rather than letting tmux intercept them -- and for the nested case,
+      # tmux inside tmux, where the inner one has to hand the sequence outward
+      # instead of consuming it.
+      set -g allow-passthrough on
+
+      # tmux believes a terminal supports OSC 52 only when it can see the `Ms`
+      # capability for it. enableAllTerminfo above means the entries are present,
+      # but a client reporting something outside xterm*/screen* would still be
+      # assumed not to, so say it for everything. Harmless where it is untrue:
+      # a terminal that ignores OSC 52 ignores it.
+      set -as terminal-features ',*:clipboard'
+    '';
+  };
+
+  # `something | clip` puts stdin on the clipboard of the machine being typed
+  # at, through ssh and through tmux. The point of having it as a script rather
+  # than a shell alias is /dev/tty below.
+  environment.systemPackages = [
+    (pkgs.writeShellScriptBin "clip" ''
+      set -euo pipefail
+
+      payload="$(${pkgs.coreutils}/bin/base64 -w0)"
+
+      # /dev/tty and not stdout, which is the whole trick. An escape sequence
+      # written to stdout goes wherever stdout goes -- and in `cat secret |
+      # clip` under a pipeline, or under any harness that captures output, that
+      # is a pipe, so the sequence sets nobody's clipboard and prints garbage
+      # into a log instead. /dev/tty is the terminal itself regardless.
+      printf '\033]52;c;%s\a' "$payload" > /dev/tty
+
+      # To stderr, so `clip` stays usable mid-pipeline.
+      echo "copied ''${#payload} base64 chars to the clipboard" >&2
+    '')
+  ]
+  ++ (with pkgs; [
+    # Render something as a QR code in the terminal. The reason it is here next
+    # to `clip`: a terminal that refuses OSC 52 cannot be argued with, and a
+    # phone camera is the one channel that always works. For a passphrase that
+    # has to reach a password manager, it is also the shorter path -- the phone
+    # is where the password manager is.
+    qrencode
+  ])
+  ++ (with pkgs; [
     borgbackup
     btop
     cmake
@@ -140,11 +208,11 @@ in
     ripgrep
     rsync
     smartmontools
-    tmux
+    # tmux comes from programs.tmux above, which also carries its config.
     tree
     usbutils
     uv
     vim
     wget
-  ];
+  ]);
 }
