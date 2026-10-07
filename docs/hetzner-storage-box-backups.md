@@ -90,3 +90,73 @@ Replace `ARCHIVE_NAME` with one from `sudo borg-job-family-hetzner list`.
 
 Keep an offline copy of `/var/lib/secrets/borg-hetzner-passphrase`. Without it,
 the encrypted remote repository is not useful during disaster recovery.
+
+## ai-trainer, which lives on another host
+
+`server.backups.aiTrainer` collects ai-trainer's backup from the VPS it runs on
+and drops it in `/srv/backups/ai-trainer`, which is one of the family job's
+paths — so it rides along to the Storage Box with everything else, under the
+same encryption and retention.
+
+```nix
+server.backups.aiTrainer = {
+  enable = true;              # requires backups.hetzner.enable
+  host = "trainlikea.pro";
+};
+```
+
+It is a **pull**, and that is the reason it is done from here rather than from
+the VPS. A host that pushes its own backups needs credentials for the backup
+store, so whoever takes that host also reaches the backups of the data it was
+holding — the one failure a backup exists to survive. This way the VPS holds no
+Storage Box credentials; this machine reaches in and collects. The cost is that
+this machine has to be up, which the staleness check below covers.
+
+The VPS takes its own backup at 03:00 on its own timer; `fetch-ai-trainer-backup`
+collects at 03:30, before the 04:00 local job. It is deliberately not hooked into
+the Borg jobs' `preHook`s: that would run a `pg_dump` on a production host twice
+a night, once per job.
+
+Two things keep this from being a root shell on that host:
+
+- the key's forced command there is ai-trainer's `scripts/backup-over-ssh.sh`,
+  which permits `rsync --server --sender` against the backup directory and
+  nothing else — it cannot take a backup, delete one, write into the directory,
+  or read any other path;
+- the artefacts arrive already encrypted with their own GPG passphrase, which
+  this machine does not have. So it stores ai-trainer's secrets bundle without
+  being able to read it, and a compromise of this machine or of the Storage Box
+  does not yield that deployment's encryption keys.
+
+### Setup
+
+```bash
+# here
+sudo ssh-keygen -t ed25519 -N "" -f /var/lib/secrets/ai-trainer-backup-ed25519
+sudo cat /var/lib/secrets/ai-trainer-backup-ed25519.pub
+```
+
+On the VPS, in `/root/.ssh/authorized_keys`, as one line:
+
+```
+command="/opt/ai-trainer/scripts/backup-over-ssh.sh",restrict ssh-ed25519 AAAA... backup-fetch
+```
+
+Then check it end to end before trusting the timer:
+
+```bash
+sudo systemctl start fetch-ai-trainer-backup.service
+sudo ls -l /srv/backups/ai-trainer
+```
+
+### A stale fetch is a failure, not a shrug
+
+`fetch-ai-trainer-backup` exits non-zero if nothing in the local directory is
+newer than two days, and mails through `ai-trainer-backup-failed.service`.
+Without that, a broken timer on the VPS would be invisible: the fetch would
+succeed against a stale directory, Borg would archive last week's artefacts every
+night and report success, and the first time anybody noticed would be a restore.
+
+The restore procedure for those artefacts is `docs/runbook-restore.md` in the
+ai-trainer repo. A dump without the keys that open it restores *cleanly* and is
+useless, so that document matters more than this section does.

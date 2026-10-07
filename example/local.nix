@@ -49,5 +49,20 @@
       smtpPort = 587;
       smtpUser = "server@example.com";
     };
+
+    # Optional: fetch the ai-trainer backup from its own host and let it ride
+    # along in the family Borg job. Pulled, not pushed, so that host holds no
+    # Storage Box credentials — a compromise of the machine holding the data
+    # cannot reach the backups of it. Requires backups.hetzner.enable, since
+    # that is how the artefacts leave this machine at all.
+    #
+    # The remote host takes its own backup on its own timer; this only collects
+    # the result, so the key below can be pinned on the far end to
+    # `rsync --server --sender` (ai-trainer ships scripts/backup-over-ssh.sh).
+    backups.aiTrainer = {
+      enable = true;
+      host = "trainlikea.pro";
+      # sshKeyFile defaults to /var/lib/secrets/ai-trainer-backup-ed25519.
+    };
   };
 }
