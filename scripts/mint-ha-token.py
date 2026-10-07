@@ -62,9 +62,13 @@ def load(name):
 def accounts():
     """Users with their login names and their password-login sessions."""
     auth = load("auth")
+    # The login name is not in auth_provider.homeassistant -- its rows carry
+    # only username and password hash, no user id. The link between the two is
+    # the credential, which lives in auth itself.
     usernames = {}
-    for entry in load("auth_provider.homeassistant")["users"]:
-        usernames.setdefault(entry["user_id"], entry["username"])
+    for cred in auth.get("credentials", []):
+        if cred.get("auth_provider_type") == "homeassistant":
+            usernames.setdefault(cred["user_id"], cred.get("data", {}).get("username"))
 
     users = {}
     for user in auth["users"]:
