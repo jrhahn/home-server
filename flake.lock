@@ -88,11 +88,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791481697,
-        "narHash": "sha256-/ZS+qAsDjysrQ70fIIrbfWt8YPzEhulzy3Ts9CUqjg0=",
+        "lastModified": 1791488231,
+        "narHash": "sha256-PV5GODqQhEu6tph0LVnNSf+wudnqJU/wL4ZlQhtp2pU=",
         "owner": "jrhahn",
         "repo": "rs-smarthome-nodes",
-        "rev": "c50eb99f6c2d741a3978ed240213b8276ad7c425",
+        "rev": "56adec6643717111b5a2d7e630bc2d716b84ec2f",
         "type": "github"
       },
       "original": {
