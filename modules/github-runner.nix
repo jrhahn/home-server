@@ -107,6 +107,9 @@ lib.mkIf cfg.enable {
         environment.systemPackages = [ pkgs.curl ];
         systemd.tmpfiles.rules = [
           "d /var/lib/runner 0755 root root -"
+          # Actions start scripts with #!/bin/bash (e.g. subosito/flutter-action);
+          # NixOS only has /bin/sh.
+          "L+ /bin/bash - - - - ${pkgs.bash}/bin/bash"
         ]
         ++ lib.concatMap (repo: [
           "d ${repoDir repo} 0700 ${userOf repo} ${userOf repo} -"
