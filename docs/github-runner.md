@@ -107,6 +107,20 @@ The per-repository users keep them away from other repositories' jobs, but a
 compromised dependency *in the deploy job itself* sees them, just as it would
 on a GitHub-hosted runner.
 
+## Keep the runner current
+
+GitHub stops sending jobs to a runner version once a newer release is about
+30 days old ("Runner version v2.x is deprecated and cannot receive
+messages"), and the Nix-packaged runner does not update itself. The module
+takes the runner from `nixpkgs-unstable`, which follows the releases, so run
+`nix flake update nixpkgs-unstable` here at least once a month and deploy.
+If the runners show *Offline* on GitHub while the container is up, this is
+the first thing to check:
+
+```bash
+sudo journalctl -M gh-runner -u 'github-runner-*' -n 20 --no-pager -o cat
+```
+
 ## Re-registering
 
 As long as the configuration does not change, restarts and reboots reuse the

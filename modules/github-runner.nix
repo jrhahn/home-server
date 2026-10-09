@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgsUnstable,
   server,
   ...
 }:
@@ -144,6 +145,12 @@ lib.mkIf cfg.enable {
             value = {
               enable = true;
               url = "https://github.com/${repo}";
+              # GitHub refuses runners older than ~30 days after a newer
+              # release ("Runner version … is deprecated and cannot receive
+              # messages"), and the Nix package cannot update itself. Stable's
+              # 2.335.1 was refused on 2026-10-09; unstable follows the
+              # releases. Bump nixpkgs-unstable at least monthly.
+              package = pkgsUnstable.github-runner;
               tokenFile = "/run/github-runner-tokens/${runnerName repo}";
               # Least privilege: a registration token can only register this
               # runner and expires after an hour; a PAT would need admin
