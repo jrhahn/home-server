@@ -81,7 +81,12 @@ in
     instances.default = {
       enable = true;
       name = config.networking.hostName;
-      url = "http://localhost:${toString forgejoPort}";
+      # The runner hands this URL to jobs as GITHUB_SERVER_URL (checkout, API),
+      # so it must be reachable from inside the job containers; localhost is
+      # the container itself there. Changing it needs a re-registration: the
+      # module only re-registers on new labels or token, so remove
+      # /var/lib/gitea-runner/default/.runner and restart the runner.
+      url = "${protocol}://${server.gitDomain}";
       tokenFile = actions.tokenFile;
       # catthehacker's act images carry what GitHub-hosted runners have (jq,
       # sudo, build-essential, python, …), so GitHub-style workflows run
@@ -98,8 +103,8 @@ in
         # OOM-killed inside its container instead.
         "--memory=3g"
         "--memory-swap=3g"
-        # Jobs check out from ROOT_URL; the name only resolves through the
-        # host's AdGuard, which the job containers do not use.
+        # Jobs reach Forgejo through the runner URL above; the name only
+        # resolves through the host's /etc/hosts, which containers don't use.
         "--add-host=${server.gitDomain}:host-gateway"
       ];
     };
