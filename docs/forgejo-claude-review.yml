@@ -1,0 +1,187 @@
+# Claude review bot for Forgejo. Copy to .forgejo/workflows/claude.yml in a repo.
+# Secrets: CLAUDE_CODE_OAUTH_TOKEN (`claude setup-token`) and REVIEW_TOKEN
+# (Forgejo token with write:repository + write:issue, ideally of a bot user).
+#
+#   - PR opened/pushed: review with inline comments on changed lines.
+#   - "@claude ..." in a PR/issue comment, an inline comment or a review:
+#     Claude answers there. If asked for code changes, it edits the repo and the
+#     workflow commits them: pushed to the PR branch, or for an issue to
+#     claude/issue-<n> with a new PR. Fork PRs get the answer but no push.
+#     Only the repo owner can trigger it, so strangers can't spend the token.
+name: claude
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+  # Forgejo sends a submitted review without its inline comments; the reply
+  # job looks them up. Single inline comments arrive as issue_comment.
+  pull_request_review_comment:
+    types: [created]
+
+env:
+  API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
+  # Appended to every bot post; comments containing it never trigger a reply.
+  MARKER: "<!-- claude-bot -->"
+
+jobs:
+  review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: apt-get update -qq && apt-get install -y -qq jq && npm install -g @anthropic-ai/claude-code
+      - name: Review
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          git diff "origin/$BASE...HEAD" | claude -p "Review the PR diff on stdin for bugs, security issues and needless complexity. \
+          Read surrounding files in the repo when needed. Put each finding in comments: path relative to the repo root, \
+          line = line number in the NEW version of the file, on a line added or changed in the diff. \
+          summary = short Markdown overview. No praise, no nitpicks; empty comments if nothing is wrong." \
+            --allowedTools "Read,Grep,Glob" --output-format json \
+            --json-schema '{"type":"object","properties":{"summary":{"type":"string"},"comments":{"type":"array","items":{"type":"object","properties":{"path":{"type":"string"},"line":{"type":"integer"},"body":{"type":"string"}},"required":["path","line","body"]}}},"required":["summary","comments"]}' \
+            > /tmp/out.json
+      - name: Post review
+        env:
+          TOKEN: ${{ secrets.REVIEW_TOKEN }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          N: ${{ github.event.pull_request.number }}
+        run: |
+          post() { curl -sf -X POST -H "Authorization: token $TOKEN" -H "Content-Type: application/json" -d @- "$API/$1"; }
+          jq --arg sha "$SHA" --arg m "$MARKER" '.structured_output | {
+              body: "\(.summary)\n\n\($m)", event: "COMMENT", commit_id: $sha,
+              comments: [.comments[] | {path, body: "\(.body)\n\n\($m)", new_position: .line}]
+            }' /tmp/out.json | post "pulls/$N/reviews" > /dev/null && exit 0
+          # Forgejo rejects the whole review if a line isn't in the diff:
+          # fall back to one plain comment so the findings aren't lost.
+          jq --arg m "$MARKER" '.structured_output | {body: (
+              [.summary] + [.comments[] | "**\(.path):\(.line)** \(.body)"] + [$m] | join("\n\n")
+            )}' /tmp/out.json | post "issues/$N/comments" > /dev/null
+
+  reply:
+    if: >-
+      github.event.sender.login == github.repository_owner && (
+        github.event_name == 'pull_request_review_comment' || (
+          github.event_name == 'issue_comment' &&
+          contains(github.event.comment.body, '@claude') &&
+          !contains(github.event.comment.body, '<!-- claude-bot -->')))
+    runs-on: ubuntu-latest
+    env:
+      N: ${{ github.event.issue.number || github.event.pull_request.number }}
+    steps:
+      # No persisted credentials: Claude can read the workspace, the token
+      # stays in the steps that need it.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: apt-get update -qq && apt-get install -y -qq jq && npm install -g @anthropic-ai/claude-code
+      - name: Gather context
+        env:
+          TOKEN: ${{ secrets.REVIEW_TOKEN }}
+          CID: ${{ github.event.comment.id }}
+          BODY: ${{ github.event.comment.body || github.event.review.content }}
+          SENDER: ${{ github.event.sender.login }}
+        run: |
+          get() { curl -sf -H "Authorization: token $TOKEN" "$API/$1"; }
+          git_auth() { git -c http.extraHeader="Authorization: Basic $(printf 'x:%s' "$TOKEN" | base64 -w0)" "$@"; }
+          get "issues/$N" > /tmp/issue.json
+          pr="" all="[]" inline=null
+          if pr=$(get "pulls/$N"); then
+            git_auth fetch -q origin "refs/pull/$N/head" && git checkout -q FETCH_HEAD
+            # ponytail: first 50 reviews only, page through them if PRs get that long
+            reviews=$(get "pulls/$N/reviews?limit=50")
+            all=$(for r in $(jq '.[].id' <<<"$reviews"); do get "pulls/$N/reviews/$r/comments"; done | jq -s 'add // [] | sort_by(.id)')
+            if [ -n "$CID" ]; then
+              # issue_comment: an inline comment if its id is among the review comments.
+              inline=$(jq --argjson id "$CID" 'map(select(.id == $id)) | last' <<<"$all")
+            else
+              # Submitted review: the sender's latest review, last inline @claude in it.
+              rid=$(jq --arg u "$SENDER" 'map(select(.user.login == $u)) | max_by(.id) | .id' <<<"$reviews")
+              inline=$(jq --argjson rid "$rid" --arg m "$MARKER" 'map(select(.pull_request_review_id == $rid
+                and (.body | contains("@claude")) and (.body | contains($m) | not))) | last' <<<"$all")
+              [ "$inline" = null ] || BODY=$(jq -r .body <<<"$inline")
+            fi
+          fi
+          case "$BODY" in *"$MARKER"*) exit 0 ;; *@claude*) ;; *) exit 0 ;; esac
+          printf '%s' "$pr" > /tmp/pr.json
+          printf '%s' "$inline" > /tmp/inline.json
+          {
+            jq -r '"# \(.title)\n\n\(.body)"' /tmp/issue.json
+            echo; echo "# Comments"
+            get "issues/$N/comments?limit=50" | jq -r '.[] | "## \(.user.login)\n\(.body)\n"'
+            if [ -n "$pr" ]; then
+              echo "# Diff"
+              git diff "origin/$(jq -r .base.ref <<<"$pr")...HEAD"
+            fi
+            if [ "$inline" != null ]; then
+              jq -r '"# Inline thread on \(.path) line \(.position + .original_position)\n\(.diff_hunk)\n"' <<<"$inline"
+              jq -r --argjson c "$inline" '.[] | select(.path == $c.path and .position == $c.position
+                and .original_position == $c.original_position) | "## \(.user.login)\n\(.body)\n"' <<<"$all"
+            fi
+            echo "# Request"
+            echo "$BODY"
+          } > /tmp/ctx.md
+      - name: Claude
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          [ -f /tmp/ctx.md ] || exit 0
+          claude -p "You are @claude, a bot on a Forgejo issue or PR; stdin holds the thread. Answer the request at the end, \
+          in Markdown, concise, in the language of the request. The repo (the PR head for a PR) is the working directory. \
+          If the request asks for code changes, make them with Edit/Write: they get committed and pushed for you, so say \
+          briefly what you changed. Otherwise change no files. Never write secrets or credentials into files or the answer." \
+            --allowedTools "Read,Grep,Glob,Edit,Write" < /tmp/ctx.md > /tmp/reply.md
+      - name: Commit and answer
+        env:
+          TOKEN: ${{ secrets.REVIEW_TOKEN }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          [ -f /tmp/ctx.md ] || exit 0
+          post() { curl -sf -X POST -H "Authorization: token $TOKEN" -H "Content-Type: application/json" -d @- "$API/$1"; }
+          git_auth() { git -c http.extraHeader="Authorization: Basic $(printf 'x:%s' "$TOKEN" | base64 -w0)" "$@"; }
+          pr=$(cat /tmp/pr.json)
+          note=""
+          git add -A
+          if ! git diff --cached --quiet; then
+            git -c user.name=claude -c user.email=claude@noreply.invalid commit -qm "claude: changes requested in #$N"
+            sha=$(git rev-parse --short HEAD)
+            if [ -z "$pr" ]; then
+              branch="claude/issue-$N"
+              if git_auth push -qf origin "HEAD:refs/heads/$branch"; then
+                note="Pushed \`$sha\` to \`$branch\`."
+                if new=$(jq --arg h "$branch" --arg b "$DEFAULT_BRANCH" --arg n "$N" \
+                    '{head: $h, base: $b, title: "claude: \(.title)", body: "Closes #\($n)"}' /tmp/issue.json | post pulls); then
+                  note="$note Opened #$(jq .number <<<"$new")."
+                fi
+              else
+                note="Push of \`$sha\` to \`$branch\` failed."
+              fi
+            elif [ "$(jq '.head.repo.id == .base.repo.id' <<<"$pr")" = true ]; then
+              head=$(jq -r .head.ref <<<"$pr")
+              if git_auth push -q origin "HEAD:refs/heads/$head"; then
+                note="Pushed \`$sha\` to \`$head\`."
+              else
+                note="Push of \`$sha\` to \`$head\` failed (branch moved meanwhile?)."
+              fi
+            else
+              note="Changes not pushed: this PR comes from a fork."
+            fi
+          fi
+          { cat /tmp/reply.md; [ -z "$note" ] || printf '\n\n%s' "$note"; printf '\n\n%s' "$MARKER"; } > /tmp/body.md
+          # Inline request: answer in that thread (same path and line). If Forgejo
+          # rejects it, or for everything else, answer in the conversation.
+          if [ "$(cat /tmp/inline.json)" != null ] && jq --rawfile b /tmp/body.md --arg sha "$(jq -r .head.sha <<<"$pr")" \
+              '{event: "COMMENT", body: "", commit_id: $sha,
+                comments: [{path, body: $b, new_position: .position, old_position: .original_position}]}' \
+              /tmp/inline.json | post "pulls/$N/reviews" > /dev/null; then
+            exit 0
+          fi
+          jq -n --rawfile b /tmp/body.md '{body: $b}' | post "issues/$N/comments" > /dev/null

@@ -167,7 +167,15 @@ lib.mkIf cfg.enable {
               # on disk, not in the RAM-backed runtime directory (HOME is the
               # work dir, so caches of Flutter, cargo and pub land here too)
               workDir = "${repoDir repo}/work";
+              # upstream only adds bash, coreutils, git, tar and gzip; actions'
+              # shell steps expect the rest of a usual Linux userland
               extraPackages = with pkgs; [
+                diffutils
+                findutils
+                gawk
+                gnugrep
+                gnused
+                hostname
                 bzip2
                 curl
                 file
