@@ -50,7 +50,7 @@ jobs:
           Read surrounding files in the repo when needed. Put each finding in comments: path relative to the repo root, \
           line = line number in the NEW version of the file, on a line added or changed in the diff. \
           summary = short Markdown overview. No praise, no nitpicks; empty comments if nothing is wrong." \
-            --allowedTools "Read,Grep,Glob" --output-format json \
+            --allowedTools "Read,Grep,Glob" --disallowedTools "Read(//proc/**)" --output-format json \
             --json-schema '{"type":"object","properties":{"summary":{"type":"string"},"comments":{"type":"array","items":{"type":"object","properties":{"path":{"type":"string"},"line":{"type":"integer"},"body":{"type":"string"}},"required":["path","line","body"]}}},"required":["summary","comments"]}' \
             > /tmp/out.json
       - name: Post review
@@ -143,6 +143,8 @@ jobs:
         run: |
           # Not as root: Claude may write files, but none that later steps run
           # (e.g. /usr/bin/curl while REVIEW_TOKEN is set).
+          # Its own environment holds CLAUDE_CODE_OAUTH_TOKEN: /proc is denied in
+          # both Claude calls so an injected prompt can't read and post it.
           useradd -m claude
           chown -R claude "$PWD"
           setpriv --reuid=claude --regid=claude --init-groups env HOME=/home/claude \
@@ -150,7 +152,7 @@ jobs:
           in Markdown, concise, in the language of the request. The repo (the PR head for a PR) is the working directory. \
           If the request asks for code changes, make them with Edit/Write: they get committed and pushed for you, so say \
           briefly what you changed. Otherwise change no files. Never write secrets or credentials into files or the answer." \
-            --allowedTools "Read,Grep,Glob,Edit,Write" < /tmp/ctx.md > /tmp/reply.md
+            --allowedTools "Read,Grep,Glob,Edit,Write" --disallowedTools "Read(//proc/**)" < /tmp/ctx.md > /tmp/reply.md
       - name: Commit and answer
         if: steps.ctx.outputs.go == 'true'
         env:
