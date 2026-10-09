@@ -84,6 +84,16 @@ journalctl -u gitea-runner-default.service --since '10 min ago'
 
 Rerun the token script only to rotate the token, then restart the runner.
 
+### Claude review bot
+
+[`forgejo-claude-review.yml`](forgejo-claude-review.yml) reviews PRs with
+inline comments and answers `@claude` mentions from the repo owner, in the
+conversation, inline threads and reviews. Asked for code changes, it commits
+them to the PR branch (or to `claude/issue-<n>` with a new PR). Copy it to
+`.forgejo/workflows/claude.yml` in a repo and add the repo secrets
+`CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) and `REVIEW_TOKEN` (a
+Forgejo token with `write:repository` and `write:issue`, ideally of a bot user).
+
 ## Backups
 
 Forgejo writes its own dump to `/srv/forgejo/dump` at 03:30, and `/srv/forgejo`
