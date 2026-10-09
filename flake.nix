@@ -54,6 +54,7 @@
           ./modules/external-storage.nix
           ./modules/firmware-server.nix
           ./modules/forgejo.nix
+          ./modules/github-runner.nix
           ./modules/home-assistant.nix
           ./modules/immich.nix
           ./modules/maintenance.nix

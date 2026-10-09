@@ -68,12 +68,17 @@ Default local hostnames:
 
 Forgejo Actions is opt-in via `server.forgejo.actions.enable`.
 
+GitHub Actions runners for private GitHub repositories are opt-in via
+`server.githubRunner.enable`; they run jailed in a NixOS container without
+access to the LAN, the tailnet or host data ([guide](docs/github-runner.md)).
+
 Getting started:
 
 - [Seafile guide](docs/seafile-getting-started.md)
 - [Immich guide](docs/immich-getting-started.md)
 - [Google Photos -> Immich migration](docs/immich-google-photos-migration.md)
 - [Forgejo guide](docs/forgejo-getting-started.md)
+- [GitHub Actions runner](docs/github-runner.md)
 - [Paperless-ngx guide](docs/paperless-getting-started.md)
 - [TRMNL / Terminus guide](docs/trmnl-getting-started.md)
 
