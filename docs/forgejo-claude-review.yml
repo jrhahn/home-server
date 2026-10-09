@@ -117,7 +117,7 @@ jobs:
             fi
           fi
           case "$BODY" in *"$MARKER"*) exit 0 ;; *@claude*) ;; *) exit 0 ;; esac
-          # Step outputs, not files: Claude can write anywhere in the container,
+          # Step outputs, not files: Claude can write to the workspace and /tmp,
           # the outputs are fixed before it runs.
           { echo go=true; echo "inline=$(jq -c . <<<"$inline")"; } >> "$GITHUB_OUTPUT"
           {
@@ -141,7 +141,12 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
-          claude -p "You are @claude, a bot on a Forgejo issue or PR; stdin holds the thread. Answer the request at the end, \
+          # Not as root: Claude may write files, but none that later steps run
+          # (e.g. /usr/bin/curl while REVIEW_TOKEN is set).
+          useradd -m claude
+          chown -R claude "$PWD"
+          setpriv --reuid=claude --regid=claude --init-groups env HOME=/home/claude \
+            claude -p "You are @claude, a bot on a Forgejo issue or PR; stdin holds the thread. Answer the request at the end, \
           in Markdown, concise, in the language of the request. The repo (the PR head for a PR) is the working directory. \
           If the request asks for code changes, make them with Edit/Write: they get committed and pushed for you, so say \
           briefly what you changed. Otherwise change no files. Never write secrets or credentials into files or the answer." \
@@ -160,11 +165,13 @@ jobs:
           # filters, hooks run commands while TOKEN is set): rebuild the repo
           # config and ignore global/system config and hooks.
           export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+          rm -f .git/config  # may be a symlink planted by Claude
           printf '[core]\n\trepositoryformatversion = 0\n\tbare = false\n' > .git/config
           g() { git -c core.hooksPath=/dev/null -c core.fsmonitor=false -c safe.directory='*' "$@"; }
           git_auth() { g -c http.extraHeader="Authorization: Basic $(printf 'x:%s' "$TOKEN" | base64 -w0)" "$@"; }
           # Fresh from the API: anything Claude could touch is untrusted here.
           pr=$(get "pulls/$N" || true)
+          body=$(mktemp)
           note=""
           # Never commit workflow changes: they would run with the repo's secrets.
           g add -A -- . ':!.github'
@@ -173,8 +180,8 @@ jobs:
             g -c user.name=claude -c user.email=claude@noreply.invalid commit -qm "claude: changes requested in #$N"
             sha=$(g rev-parse --short HEAD)
             if [ -z "$pr" ]; then
-              branch="claude/issue-$N"
-              if git_auth push -qf "$REMOTE" "HEAD:refs/heads/$branch"; then
+              branch="claude/issue-$N-$sha"
+              if git_auth push -q "$REMOTE" "HEAD:refs/heads/$branch"; then
                 note="$note Pushed \`$sha\` to \`$branch\`."
                 if new=$(jq --arg h "$branch" --arg b "$DEFAULT_BRANCH" --arg n "$N" \
                     '{head: $h, base: $b, title: "claude: \(.title)", body: "Closes #\($n)"}' <(get "issues/$N") | post pulls); then
@@ -194,13 +201,13 @@ jobs:
               note="$note Changes not pushed: this PR comes from a fork."
             fi
           fi
-          { cat /tmp/reply.md; [ -z "$note" ] || printf '\n\n%s' "$note"; printf '\n\n%s' "$MARKER"; } > /tmp/body.md
+          { cat /tmp/reply.md; [ -z "$note" ] || printf '\n\n%s' "$note"; printf '\n\n%s' "$MARKER"; } > "$body"
           # Inline request: answer in that thread (same path and line). If Forgejo
           # rejects it, or for everything else, answer in the conversation.
-          if [ "$INLINE" != null ] && jq --rawfile b /tmp/body.md --arg sha "$(jq -r .head.sha <<<"$pr")" \
+          if [ "$INLINE" != null ] && jq --rawfile b "$body" --arg sha "$(jq -r .head.sha <<<"$pr")" \
               '{event: "COMMENT", body: "", commit_id: $sha,
                 comments: [{path, body: $b, new_position: .position, old_position: .original_position}]}' \
               <<<"$INLINE" | post "pulls/$N/reviews" >&2; then
             exit 0
           fi
-          jq -n --rawfile b /tmp/body.md '{body: $b}' | post "issues/$N/comments" >&2
+          jq -n --rawfile b "$body" '{body: $b}' | post "issues/$N/comments" >&2
