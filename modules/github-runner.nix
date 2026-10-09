@@ -34,6 +34,11 @@ let
     "224.0.0.0/4"
   ];
   runnerName = repo: lib.replaceStrings [ "/" ] [ "-" ] repo;
+  # One system user per repository, so a job of one repository cannot read
+  # another one's checkout, caches or secrets (e.g. a deploy key in a running
+  # ssh-agent).
+  userOf = repo: "gh-${lib.last (lib.splitString "/" repo)}";
+  repoDir = repo: "/var/lib/runner/${runnerName repo}";
 in
 lib.mkIf cfg.enable {
   assertions = [
@@ -69,20 +74,33 @@ lib.mkIf cfg.enable {
           "149.112.112.112"
         ];
 
-        users.users.runner = {
-          isSystemUser = true;
-          group = "runner";
-          home = "/var/lib/runner";
-          createHome = true;
-        };
-        users.groups.runner = { };
+        users.users = lib.listToAttrs (
+          map (repo: {
+            name = userOf repo;
+            value = {
+              isSystemUser = true;
+              group = userOf repo;
+              home = repoDir repo;
+            };
+          }) cfg.repos
+        );
+        users.groups = lib.listToAttrs (
+          map (repo: {
+            name = userOf repo;
+            value = { };
+          }) cfg.repos
+        );
 
         # for the checks in docs/github-runner.md
         environment.systemPackages = [ pkgs.curl ];
         systemd.tmpfiles.rules = [
-          "d /var/lib/runner/toolcache 0750 runner runner -"
+          "d /var/lib/runner 0755 root root -"
         ]
-        ++ map (repo: "d /var/lib/runner/${runnerName repo} 0750 runner runner -") cfg.repos;
+        ++ lib.concatMap (repo: [
+          "d ${repoDir repo} 0700 ${userOf repo} ${userOf repo} -"
+          "d ${repoDir repo}/work 0700 ${userOf repo} ${userOf repo} -"
+          "d ${repoDir repo}/toolcache 0700 ${userOf repo} ${userOf repo} -"
+        ]) cfg.repos;
 
         # Actions download prebuilt Linux binaries (Flutter, Rust toolchains via
         # rustup, cargo tools); nix-ld lets them find a loader and the usual
@@ -104,6 +122,7 @@ lib.mkIf cfg.enable {
             libxml2
             icu
             sqlite
+            systemd # libudev, e.g. for a prebuilt espflash
             util-linux
           ];
         };
@@ -122,11 +141,11 @@ lib.mkIf cfg.enable {
               tokenType = "registration";
               extraLabels = [ cfg.label ];
               replace = true;
-              user = "runner";
-              group = "runner";
+              user = userOf repo;
+              group = userOf repo;
               # on disk, not in the RAM-backed runtime directory (HOME is the
               # work dir, so caches of Flutter, cargo and pub land here too)
-              workDir = "/var/lib/runner/${runnerName repo}";
+              workDir = "${repoDir repo}/work";
               extraPackages = with pkgs; [
                 bzip2
                 curl
@@ -147,11 +166,11 @@ lib.mkIf cfg.enable {
                 zip
               ];
               extraEnvironment = {
-                RUNNER_TOOL_CACHE = "/var/lib/runner/toolcache";
+                RUNNER_TOOL_CACHE = "${repoDir repo}/toolcache";
                 NIX_LD = "/run/current-system/sw/share/nix-ld/lib/ld.so";
                 NIX_LD_LIBRARY_PATH = "/run/current-system/sw/share/nix-ld/lib";
               };
-              serviceOverrides.ReadWritePaths = [ "/var/lib/runner" ];
+              serviceOverrides.ReadWritePaths = [ (repoDir repo) ];
             };
           }) cfg.repos
         );

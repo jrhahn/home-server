@@ -15,6 +15,7 @@ enough, so the jobs run in a NixOS container (`gh-runner`, systemd-nspawn):
 | File system | the container's own root; no `/home`, `/srv`, `/var/lib/secrets` or other host state. Only the token directory is bind-mounted, read-only. |
 | Network | internet via NAT. Dropped: everything to the host, `10/8`, `172.16/12`, `192.168/16`, `100.64/10` (tailnet), `169.254/16`, multicast, and all IPv6. DNS goes to Quad9, because AdGuard is on the LAN. |
 | Inbound | nothing: the runner polls GitHub over outgoing HTTPS, no port is opened. |
+| Other repositories | each repository's runner runs as its own user (`gh-<repo>`) with its own `0700` work directory, tool cache and `/tmp`, so a job cannot read another repository's checkout, caches or secrets. |
 | Resources | the whole container is capped at `memoryMax` (default 3 GB) and `cpuQuota` (default 2 cores), with low CPU and IO weight, so the family services win. |
 
 Only register **private** repositories. On a public one, a pull request from a
@@ -34,21 +35,29 @@ anything needing macOS (iOS).
    ```nix
    server.githubRunner = {
      enable = true;
-     repos = [ "jrhahn/drinklight" ];
+     # the private repositories with workflows
+     repos = [
+       "jrhahn/drinklight"
+       "jrhahn/ai-trainer-ops"
+       "jrhahn/rs-game-jet-ski"
+     ];
    };
    ```
 
-2. **Registration token** (one per repository): on GitHub, open the repository
-   → *Settings → Actions → Runners → New self-hosted runner*, and copy the
-   token from the `./config.sh … --token XXXX` line. It is valid for one
-   hour, so do steps 2–3 together. On the server:
+2. **Registration tokens**, one per repository, from your laptop (where `gh`
+   is logged in). The script asks GitHub for the tokens and writes them on the
+   server over SSH; it refuses public repositories:
 
    ```bash
-   sudo install -d -m 0700 /var/lib/secrets/github-runner
-   # file name: owner-repo
-   echo -n 'XXXX' | sudo tee /var/lib/secrets/github-runner/jrhahn-drinklight >/dev/null
-   sudo chmod 0600 /var/lib/secrets/github-runner/jrhahn-drinklight
+   scripts/create-github-runner-tokens.sh admin@family-server \
+     jrhahn/drinklight jrhahn/ai-trainer-ops jrhahn/rs-game-jet-ski
    ```
+
+   They are valid for one hour, so do steps 2–3 together. (By hand: the
+   repository → *Settings → Actions → Runners → New self-hosted runner*, the
+   token from the `--token` line into
+   `/var/lib/secrets/github-runner/<owner>-<repo>`, `0600 root`, without a
+   trailing newline.)
 
    Use the registration token, not a personal access token. A PAT would need
    admin rights on the repository, while a registration token can only
@@ -87,13 +96,22 @@ back to GitHub-hosted runners.
 runs-on: ${{ vars.RUNNER || 'ubuntu-latest' }}
 ```
 
-Each repository has one runner, so its jobs run one after another.
+Personal GitHub accounts have no account-wide runners (only organizations
+do), so each repository gets its own runner and its own variable. Within a
+repository, jobs run one after another; jobs of different repositories run
+side by side and share the container's memory and CPU caps.
+
+Deploy jobs (e.g. ai-trainer-ops) bring production secrets onto this machine.
+The per-repository users keep them away from other repositories' jobs, but a
+compromised dependency *in the deploy job itself* sees them, just as it would
+on a GitHub-hosted runner.
 
 ## Re-registering
 
 As long as the configuration does not change, restarts and reboots reuse the
 registration. After changing `repos`, `label` or the token file, the runner
-registers again and needs a fresh registration token (step 2). An expired
+registers again and needs a fresh registration token (step 2; for a new
+repository, only that one). An expired
 token shows up as HTTP 404 in the configure step of the journal.
 
 ## Disk
@@ -103,6 +121,6 @@ internal disk. Expect about 10 GB per repository for the Flutter SDK, Rust
 toolchains and build caches. To wipe all caches:
 
 ```bash
-sudo nixos-container run gh-runner -- rm -rf /var/lib/runner/toolcache
+sudo nixos-container run gh-runner -- sh -c 'rm -rf /var/lib/runner/*/toolcache/*'
 sudo systemctl restart container@gh-runner   # work directories are cleaned on start
 ```
