@@ -340,6 +340,70 @@ in
       };
     };
 
+    githubRunner = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Run GitHub Actions self-hosted runners for private repositories in an
+          isolated NixOS container (systemd-nspawn). The container has its own
+          root file system (no /home, no /srv, no secrets except the runner
+          token), reaches the internet through NAT but nothing on the LAN, the
+          tailnet or the host, and is capped in memory and CPU so the family
+          services keep priority. See docs/github-runner.md.
+        '';
+      };
+      repos = mkOption {
+        type = types.listOf types.str;
+        default = [ ];
+        example = [ "jrhahn/drinklight" ];
+        description = ''
+          Repositories (owner/name) that get one runner each. Only private
+          repositories: on a public one, a fork's pull request could run code
+          here.
+        '';
+      };
+      tokenDir = mkOption {
+        type = types.str;
+        default = "/var/lib/secrets/github-runner";
+        description = ''
+          Directory with one registration token per repository, named after
+          the repository with "/" replaced by "-" (e.g. jrhahn-drinklight).
+          Bind-mounted read-only into the container. Use the short-lived
+          registration token from Settings -> Actions -> Runners -> New
+          self-hosted runner rather than a personal access token, which would
+          need admin rights on the repository.
+        '';
+      };
+      label = mkOption {
+        type = types.str;
+        default = "home-nixos";
+        description = ''
+          Label the runners register with; workflows select them with
+          `runs-on: home-nixos`.
+        '';
+      };
+      memoryMax = mkOption {
+        type = types.str;
+        default = "3G";
+        description = "Hard memory limit of the whole container (systemd MemoryMax).";
+      };
+      cpuQuota = mkOption {
+        type = types.str;
+        default = "200%";
+        description = "CPU limit of the whole container (systemd CPUQuota; 100% = one core).";
+      };
+      externalInterface = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        example = "enp1s0";
+        description = ''
+          Uplink interface for the container's NAT. null masquerades on every
+          interface, which is fine for a single uplink.
+        '';
+      };
+    };
+
     printServer = {
       enable = mkOption {
         type = types.bool;
