@@ -154,9 +154,11 @@ lib.mkIf cfg.enable {
                 gnumake
                 jq
                 lsof
+                openssh # ssh-agent and ssh for deploy jobs
                 pkg-config
                 procps
                 python3
+                rsync
                 rustup
                 unzip
                 wget
