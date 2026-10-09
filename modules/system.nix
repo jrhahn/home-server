@@ -82,6 +82,10 @@ in
 
   users.users.${cfg.adminUser} = {
     isNormalUser = true;
+    # programs.tmux puts its socket in /run/user/<uid> (secureSocket), which
+    # logind deletes when the last session ends -- so a tmux started over ssh
+    # was unreachable after logging out. Lingering keeps the runtime dir alive.
+    linger = true;
     shell = pkgs.zsh;
     extraGroups = [
       "wheel"
