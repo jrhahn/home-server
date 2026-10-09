@@ -98,8 +98,7 @@ in
         "ubuntu-22.04:docker://ghcr.io/catthehacker/ubuntu:act-22.04"
       ];
       # Two jobs at once, so the review bot doesn't queue behind a long build.
-      # ponytail: worst case 2 x 3 GB (--memory below); back to 1 if the
-      # family services get squeezed.
+      # Together they stay inside forgejo-jobs.slice (below).
       settings.runner.capacity = 2;
       settings.container.options = lib.concatStringsSep " " [
         # Stability, not security: a job (an Android Gradle build takes 4-6 GB)
@@ -107,10 +106,24 @@ in
         # OOM-killed inside its container instead.
         "--memory=3g"
         "--memory-swap=3g"
+        # All job containers share one memory budget (slice below). Podman puts
+        # them in their own scopes, so a limit on the runner service would not
+        # reach them.
+        "--cgroup-parent=forgejo-jobs.slice"
         # Jobs reach Forgejo through the runner URL above; the name only
         # resolves through the host's /etc/hosts, which containers don't use.
         "--add-host=${server.gitDomain}:host-gateway"
       ];
+    };
+  };
+
+  # Joint cap for all job containers: 7.5 GB host, ~3 GB for the services.
+  # Over the cap the kernel OOM-kills a job, not Home Assistant or Immich.
+  # No swap, so jobs don't fill zram either.
+  systemd.slices.forgejo-jobs = lib.mkIf actions.enable {
+    sliceConfig = {
+      MemoryMax = "4G";
+      MemorySwapMax = "0";
     };
   };
 
