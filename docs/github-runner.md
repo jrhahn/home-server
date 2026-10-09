@@ -46,7 +46,8 @@ anything needing macOS (iOS).
 
 2. **Registration tokens**, one per repository, from your laptop (where `gh`
    is logged in). The script asks GitHub for the tokens and writes them on the
-   server over SSH; it refuses public repositories:
+   server over SSH (it asks for the sudo password once); it refuses public
+   repositories:
 
    ```bash
    scripts/create-github-runner-tokens.sh admin@family-server \

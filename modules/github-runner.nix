@@ -213,8 +213,13 @@ lib.mkIf cfg.enable {
   '';
 
   # Builds yield to the family services: hard caps, low CPU and IO weight.
+  # No swap: with zram at memoryPercent = 100, a capped container would page
+  # into zram, which is RAM again, and drag the host into the thrashing seen
+  # on 2026-09-13 (see the private repo's README). Without swap a build that
+  # needs more than memoryMax is OOM-killed inside the container instead.
   systemd.services."container@${name}".serviceConfig = {
     MemoryMax = cfg.memoryMax;
+    MemorySwapMax = "0";
     CPUQuota = cfg.cpuQuota;
     CPUWeight = 20;
     IOWeight = 20;
