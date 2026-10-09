@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgsUnstable,
   server,
   ...
 }:
@@ -74,6 +75,17 @@ lib.mkIf cfg.enable {
           "149.112.112.112"
         ];
 
+        # bounded retries: 10 failed starts within 10 minutes, then it stops
+        systemd.services = lib.listToAttrs (
+          map (repo: {
+            name = "github-runner-${runnerName repo}";
+            value.unitConfig = {
+              StartLimitIntervalSec = 600;
+              StartLimitBurst = 10;
+            };
+          }) cfg.repos
+        );
+
         users.users = lib.listToAttrs (
           map (repo: {
             name = userOf repo;
@@ -133,6 +145,12 @@ lib.mkIf cfg.enable {
             value = {
               enable = true;
               url = "https://github.com/${repo}";
+              # GitHub refuses runners older than ~30 days after a newer
+              # release ("Runner version … is deprecated and cannot receive
+              # messages"), and the Nix package cannot update itself. Stable's
+              # 2.335.1 was refused on 2026-10-09; unstable follows the
+              # releases. Bump nixpkgs-unstable at least monthly.
+              package = pkgsUnstable.github-runner;
               tokenFile = "/run/github-runner-tokens/${runnerName repo}";
               # Least privilege: a registration token can only register this
               # runner and expires after an hour; a PAT would need admin
@@ -172,7 +190,15 @@ lib.mkIf cfg.enable {
                 NIX_LD = "/run/current-system/sw/share/nix-ld/lib/ld.so";
                 NIX_LD_LIBRARY_PATH = "/run/current-system/sw/share/nix-ld/lib";
               };
-              serviceOverrides.ReadWritePaths = [ (repoDir repo) ];
+              serviceOverrides = {
+                ReadWritePaths = [ (repoDir repo) ];
+                # Upstream does not restart a non-ephemeral runner. Here the
+                # first start can race the container's network (DNS fails,
+                # "Resource temporarily unavailable"), and a network blip
+                # later should not leave the runner down for good either.
+                Restart = lib.mkForce "on-failure";
+                RestartSec = "30s";
+              };
             };
           }) cfg.repos
         );
