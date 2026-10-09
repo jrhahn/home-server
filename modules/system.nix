@@ -21,6 +21,19 @@ in
     priority = 100;
   };
 
+  # Overflow behind zram, bringing swap to ~16 GiB in total. zram alone (sized
+  # to RAM) ran out under a 5 GB process and the kernel OOM-killed it, taking
+  # the whole tmux scope -- and the tmux server -- down with it. Lower priority
+  # so the disk is touched only once zram is full; btrfs is handled by the
+  # NixOS swap module (mkswapfile, no CoW).
+  swapDevices = [
+    {
+      device = "/var/swapfile";
+      size = 8 * 1024;
+      priority = 10;
+    }
+  ];
+
   programs.zsh = {
     enable = true;
     enableCompletion = true;
