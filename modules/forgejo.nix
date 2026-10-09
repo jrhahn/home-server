@@ -97,6 +97,10 @@ in
         "ubuntu-24.04:docker://ghcr.io/catthehacker/ubuntu:act-24.04"
         "ubuntu-22.04:docker://ghcr.io/catthehacker/ubuntu:act-22.04"
       ];
+      # Two jobs at once, so the review bot doesn't queue behind a long build.
+      # ponytail: worst case 2 x 3 GB (--memory below); back to 1 if the
+      # family services get squeezed.
+      settings.runner.capacity = 2;
       settings.container.options = lib.concatStringsSep " " [
         # Stability, not security: a job (an Android Gradle build takes 4-6 GB)
         # must not push the family services into zram. No swap, so it is
