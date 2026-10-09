@@ -83,9 +83,24 @@ in
       name = config.networking.hostName;
       url = "http://localhost:${toString forgejoPort}";
       tokenFile = actions.tokenFile;
+      # catthehacker's act images carry what GitHub-hosted runners have (jq,
+      # sudo, build-essential, python, …), so GitHub-style workflows run
+      # without installing their basics first; node:20-bookworm lacked e.g.
+      # jq, which subosito/flutter-action needs.
       labels = [
-        "ubuntu-latest:docker://node:20-bookworm"
-        "ubuntu-22.04:docker://node:20-bookworm"
+        "ubuntu-latest:docker://ghcr.io/catthehacker/ubuntu:act-24.04"
+        "ubuntu-24.04:docker://ghcr.io/catthehacker/ubuntu:act-24.04"
+        "ubuntu-22.04:docker://ghcr.io/catthehacker/ubuntu:act-22.04"
+      ];
+      settings.container.options = lib.concatStringsSep " " [
+        # Stability, not security: a job (an Android Gradle build takes 4-6 GB)
+        # must not push the family services into zram. No swap, so it is
+        # OOM-killed inside its container instead.
+        "--memory=3g"
+        "--memory-swap=3g"
+        # Jobs check out from ROOT_URL; the name only resolves through the
+        # host's AdGuard, which the job containers do not use.
+        "--add-host=${server.gitDomain}:host-gateway"
       ];
     };
   };
