@@ -121,6 +121,16 @@ in
     };
   };
 
+  # Forgejo has no API for job logs, so the admin user reads them on disk
+  # (`zstdcat` for finished jobs). The ACL grants exactly that: traverse into
+  # the state dir, read actions_log, nothing else (app.ini, repos and the
+  # database stay forgejo-only). d: makes new log files readable as well.
+  systemd.tmpfiles.rules = lib.mkIf actions.enable [
+    "a+ /srv/forgejo - - - - u:${server.adminUser}:x"
+    "a+ /srv/forgejo/data - - - - u:${server.adminUser}:x"
+    "A+ /srv/forgejo/data/actions_log - - - - u:${server.adminUser}:rX,d:u:${server.adminUser}:rX"
+  ];
+
   # Joint cap for all job containers: 7.5 GB host, ~3 GB for the services.
   # Over the cap the kernel OOM-kills a job, not Home Assistant or Immich.
   # No swap, so jobs don't fill zram either.
