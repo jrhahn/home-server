@@ -56,6 +56,40 @@ let
       --data-urlencode "query=${sql}" >/dev/null
   '';
   questdbRelease = questdbSql "CHECKPOINT RELEASE";
+  # A checkpoint holds QuestDB's *state*, not its files: ingest carries on and
+  # appends to the newest partition's column files, which borg reports as
+  # "file changed while we backed it up". That is a warning, and the NixOS
+  # module fails the whole job on any warning -- leaving a complete archive
+  # named `.failed`. The appended rows lie beyond what the checkpoint recorded,
+  # so a restore does not see them.
+  #
+  # This `borg` sits in front of the real one for the jobs that carry QuestDB.
+  # With BORG_EXIT_CODES=modern, 100 means "file changed and nothing else"
+  # (mixed warnings come back as 1). Even then it only passes when every
+  # changed file is under QuestDB's data directory; a changed file anywhere
+  # else still fails the job as before.
+  questdbTolerantBorg =
+    let
+      dataDir = config.services.smarthome-timeseries.questdb.dataDir;
+    in
+    pkgs.writeShellScriptBin "borg" ''
+      log="$(${pkgs.coreutils}/bin/mktemp)"
+      trap '${pkgs.coreutils}/bin/rm -f "$log"' EXIT
+      exec 3>&1
+      ${config.services.borgbackup.package}/bin/borg "$@" 2>&1 >&3 3>&- \
+        | ${pkgs.coreutils}/bin/tee "$log" >&2
+      rc="''${PIPESTATUS[0]}"
+      if [[ "$rc" == 100 ]]; then
+        changed="$(${pkgs.gnugrep}/bin/grep -c ': file changed while we backed it up$' "$log" || true)"
+        elsewhere="$(${pkgs.gnugrep}/bin/grep ': file changed while we backed it up$' "$log" \
+          | ${pkgs.gnugrep}/bin/grep -vc '^${dataDir}/' || true)"
+        if [[ "$changed" -gt 0 && "$elsewhere" == 0 ]]; then
+          echo "only QuestDB files changed during its checkpoint; not a failure" >&2
+          exit 0
+        fi
+      fi
+      exit "$rc"
+    '';
 
   hetznerCommon = {
     compression = "zstd,6";
@@ -133,6 +167,8 @@ lib.mkMerge [
         ([ "borgbackup-job-family-local" ] ++ lib.optional hetzner.enable "borgbackup-job-family-hetzner")
         (_: {
           serviceConfig.ExecStopPost = pkgs.writeShellScript "questdb-checkpoint-release" questdbRelease;
+          path = lib.mkBefore [ questdbTolerantBorg ];
+          environment.BORG_EXIT_CODES = "modern";
         })
     );
 
