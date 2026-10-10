@@ -97,9 +97,9 @@ in
         "ubuntu-24.04:docker://ghcr.io/catthehacker/ubuntu:act-24.04"
         "ubuntu-22.04:docker://ghcr.io/catthehacker/ubuntu:act-22.04"
       ];
-      # Two jobs at once, so the review bot doesn't queue behind a long build.
-      # Together they stay inside forgejo-jobs.slice (below).
-      settings.runner.capacity = 2;
+      # One job at a time. Two (Rust release build + Flutter tests, ~2 GB
+      # each) got OOM-killed together inside forgejo-jobs.slice's 4 GB.
+      settings.runner.capacity = 1;
       settings.container.options = lib.concatStringsSep " " [
         # Stability, not security: a job (an Android Gradle build takes 4-6 GB)
         # must not push the family services into zram. No swap, so it is
