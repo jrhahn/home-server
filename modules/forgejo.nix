@@ -11,6 +11,10 @@ let
   forgejoPort = 3001;
   protocol = if server.enablePublicTls then "https" else "http";
   actions = server.forgejo.actions;
+  # Job images pinned by digest, never the moving tag (supply chain). Bump only
+  # to a digest that is at least 3 days old; both built 2026-08-15.
+  act2404 = "ghcr.io/catthehacker/ubuntu:act-24.04@sha256:62d572b92f9f32d3427b6d220ad1f9dca9c7b6ffad37d295425037dbff78abaf";
+  act2204 = "ghcr.io/catthehacker/ubuntu:act-22.04@sha256:f5f5c29208c4fd541704fe7b8df33d3bf620ce4ac46f36853b7abeb0159705c4";
 in
 {
   environment.systemPackages = [
@@ -93,9 +97,9 @@ in
       # without installing their basics first; node:20-bookworm lacked e.g.
       # jq, which subosito/flutter-action needs.
       labels = [
-        "ubuntu-latest:docker://ghcr.io/catthehacker/ubuntu:act-24.04"
-        "ubuntu-24.04:docker://ghcr.io/catthehacker/ubuntu:act-24.04"
-        "ubuntu-22.04:docker://ghcr.io/catthehacker/ubuntu:act-22.04"
+        "ubuntu-latest:docker://${act2404}"
+        "ubuntu-24.04:docker://${act2404}"
+        "ubuntu-22.04:docker://${act2204}"
       ];
       # Two jobs at once, so the review bot doesn't queue behind a long build.
       # Together they stay inside forgejo-jobs.slice (below).

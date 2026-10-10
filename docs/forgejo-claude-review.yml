@@ -35,12 +35,14 @@ jobs:
       !github.event.pull_request.draft
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - run: apt-get update -qq && apt-get install -y -qq jq && npm install -g @anthropic-ai/claude-code
+      # Never the newest release (supply chain): npm resolves claude-code and its
+      # dependencies as of 3 days ago. jq comes with the act image.
+      - run: npm install -g --no-fund --no-audit --before="$(date -d '3 days ago' -I)" @anthropic-ai/claude-code
       - name: Review
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -83,11 +85,13 @@ jobs:
     steps:
       # No persisted credentials: Claude can read the workspace, the token
       # stays in the steps that need it.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           persist-credentials: false
-      - run: apt-get update -qq && apt-get install -y -qq jq && npm install -g @anthropic-ai/claude-code
+      # Never the newest release (supply chain): npm resolves claude-code and its
+      # dependencies as of 3 days ago. jq comes with the act image.
+      - run: npm install -g --no-fund --no-audit --before="$(date -d '3 days ago' -I)" @anthropic-ai/claude-code
       - name: Gather context
         id: ctx
         env:
