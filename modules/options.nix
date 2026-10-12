@@ -246,6 +246,13 @@ in
           /var/lib/secrets/mosquitto-archiver-password and the `archiver` user
           on mosquitto (both created by modules/mosquitto.nix + by hand, see
           secrets/README.md).
+
+          The service itself is not defined here. It comes from the fleet's
+          deployment, whose NixOS module the private flake imports beside this
+          module set; these options stay here because the backup
+          (maintenance.nix) and the local DNS (localDomains) need to know
+          whether it is on. Enabling this without that module fails
+          evaluation on `services.smarthome-timeseries`.
         '';
       };
       retention = mkOption {
