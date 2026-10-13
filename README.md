@@ -82,9 +82,9 @@ Getting started:
 - [Paperless-ngx guide](docs/paperless-getting-started.md)
 - [TRMNL / Terminus guide](docs/trmnl-getting-started.md)
 
-The Liquid template driving the panel — weather, the rooms, and a three-frame
-rain radar on one screen — and the reasoning behind how it looks, live in
-[trmnl/](trmnl).
+The Liquid templates driving the panel describe one particular home — its
+rooms and its radar location — so they live with that deployment's private
+configuration, not here. The guide above covers the generic setup.
 
 Forgejo registration is disabled. After the first switch, create the initial
 admin account on the server:
