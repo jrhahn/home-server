@@ -9,9 +9,9 @@ entity as `unavailable` on the next restart. Only
 
 Why it matters here: taking a sensor out of the Nix configuration only makes
 its entity `unavailable`. The row stays, `GET /api/states` keeps serving it
-with its `friendly_name`, and anything deriving from those names — the TRMNL
-Zuhause screen derives its room tiles that way, see ../trmnl/README.md — keeps
-showing a room that no longer exists. No rebuild can fix that, because the
+with its `friendly_name`, and anything deriving from those names — a TRMNL
+screen that builds its room tiles from them, say — keeps showing a room that
+no longer exists. No rebuild can fix that, because the
 registry is persistent state in /srv/home-assistant/.storage, not a build
 output.
 
