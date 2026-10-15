@@ -70,8 +70,9 @@ It is **off by default**. To enable it:
    sudo systemctl restart gitea-runner-default.service
    ```
 
-The runner advertises `ubuntu-latest` and `ubuntu-22.04` labels, both mapped to
-`node:20-bookworm` containers. Workflows resolve `uses: actions/checkout@v4`
+The runner advertises `ubuntu-latest`, `ubuntu-24.04` and `ubuntu-22.04`,
+mapped to catthehacker's act images (pinned by digest in `modules/forgejo.nix`).
+Workflows resolve `uses: actions/checkout@v4`
 against `github.com` (`DEFAULT_ACTIONS_URL = "github"`), so the runner needs
 outbound internet for those steps.
 
@@ -83,6 +84,22 @@ journalctl -u gitea-runner-default.service --since '10 min ago'
 ```
 
 Rerun the token script only to rotate the token, then restart the runner.
+
+#### Boards for hardware tests
+
+A board on the server's USB gets a runner of its own, so only the jobs that ask
+for it see it:
+
+```nix
+server.forgejo.actions.deviceRunners.esp32c3-bench = "AC:27:6E:7E:5F:7C";
+```
+
+The value is the USB serial number of the board's serial port (`udevadm info
+/dev/ttyACM0 | grep ID_SERIAL_SHORT`). Jobs with `runs-on: esp32c3-bench` run
+on `gitea-runner-esp32c3\x2dbench.service` and find the board at
+`/dev/ttyACM0`. Its token is the same file as the default runner's. While the
+board is unplugged, these jobs fail to start their container; other jobs are
+not affected.
 
 ### Claude review bot
 

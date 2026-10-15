@@ -469,6 +469,21 @@ in
           `TOKEN=<registration token>`. Kept on the server, not in the Nix store.
         '';
       };
+      deviceRunners = mkOption {
+        type = types.attrsOf types.str;
+        default = { };
+        example = {
+          esp32c3-bench = "AC:27:6E:7E:5F:7C";
+        };
+        description = ''
+          Boards on this server's USB for hardware-in-the-loop jobs: a runner
+          label, mapped to the USB serial number of the board's serial port
+          (`udevadm info /dev/ttyACM0 | grep ID_SERIAL_SHORT`). Each gets its
+          own runner that takes only jobs with `runs-on: <label>` and passes
+          the board into their containers as /dev/ttyACM0. The other runners
+          never see it, and a missing board fails only these jobs.
+        '';
+      };
     };
 
     backups.aiTrainer = {

@@ -15,6 +15,47 @@ let
   # to a digest that is at least 3 days old; both built 2026-08-15.
   act2404 = "ghcr.io/catthehacker/ubuntu:act-24.04@sha256:62d572b92f9f32d3427b6d220ad1f9dca9c7b6ffad37d295425037dbff78abaf";
   act2204 = "ghcr.io/catthehacker/ubuntu:act-22.04@sha256:f5f5c29208c4fd541704fe7b8df33d3bf620ce4ac46f36853b7abeb0159705c4";
+  runner =
+    {
+      name,
+      labels,
+      extraOptions ? [ ],
+    }:
+    {
+      enable = true;
+      inherit name labels;
+      # The runner hands this URL to jobs as GITHUB_SERVER_URL (checkout, API),
+      # so it must be reachable from inside the job containers; localhost is
+      # the container itself there. Changing it needs a re-registration: the
+      # module only re-registers on new labels or token, so remove
+      # /var/lib/gitea-runner/<instance>/.runner and restart the runner.
+      url = "${protocol}://${server.gitDomain}";
+      tokenFile = actions.tokenFile;
+      # One job at a time. Two (Rust release build + Flutter tests, ~2 GB
+      # each) got OOM-killed together inside forgejo-jobs.slice's 4 GB.
+      # ponytail: a device runner's job still runs beside the default one in
+      # that slice, so a heavy pair can be OOM-killed (rerun). One queue for
+      # both would mean one runner with both label sets, which would pass the
+      # board into every job.
+      settings.runner.capacity = 1;
+      settings.container.options = lib.concatStringsSep " " (
+        [
+          # Stability, not security: a job (an Android Gradle build takes 4-6 GB)
+          # must not push the family services into zram. No swap, so it is
+          # OOM-killed inside its container instead.
+          "--memory=3g"
+          "--memory-swap=3g"
+          # All job containers share one memory budget (slice below). Podman puts
+          # them in their own scopes, so a limit on the runner service would not
+          # reach them.
+          "--cgroup-parent=forgejo-jobs.slice"
+          # Jobs reach Forgejo through the runner URL above; the name only
+          # resolves through the host's /etc/hosts, which containers don't use.
+          "--add-host=${server.gitDomain}:host-gateway"
+        ]
+        ++ extraOptions
+      );
+    };
 in
 {
   environment.systemPackages = [
@@ -82,44 +123,40 @@ in
   # jobs run in containers via the already-enabled Podman backend.
   services.gitea-actions-runner = lib.mkIf actions.enable {
     package = pkgs.forgejo-runner;
-    instances.default = {
-      enable = true;
-      name = config.networking.hostName;
-      # The runner hands this URL to jobs as GITHUB_SERVER_URL (checkout, API),
-      # so it must be reachable from inside the job containers; localhost is
-      # the container itself there. Changing it needs a re-registration: the
-      # module only re-registers on new labels or token, so remove
-      # /var/lib/gitea-runner/default/.runner and restart the runner.
-      url = "${protocol}://${server.gitDomain}";
-      tokenFile = actions.tokenFile;
-      # catthehacker's act images carry what GitHub-hosted runners have (jq,
-      # sudo, build-essential, python, …), so GitHub-style workflows run
-      # without installing their basics first; node:20-bookworm lacked e.g.
-      # jq, which subosito/flutter-action needs.
-      labels = [
-        "ubuntu-latest:docker://${act2404}"
-        "ubuntu-24.04:docker://${act2404}"
-        "ubuntu-22.04:docker://${act2204}"
-      ];
-      # One job at a time. Two (Rust release build + Flutter tests, ~2 GB
-      # each) got OOM-killed together inside forgejo-jobs.slice's 4 GB.
-      settings.runner.capacity = 1;
-      settings.container.options = lib.concatStringsSep " " [
-        # Stability, not security: a job (an Android Gradle build takes 4-6 GB)
-        # must not push the family services into zram. No swap, so it is
-        # OOM-killed inside its container instead.
-        "--memory=3g"
-        "--memory-swap=3g"
-        # All job containers share one memory budget (slice below). Podman puts
-        # them in their own scopes, so a limit on the runner service would not
-        # reach them.
-        "--cgroup-parent=forgejo-jobs.slice"
-        # Jobs reach Forgejo through the runner URL above; the name only
-        # resolves through the host's /etc/hosts, which containers don't use.
-        "--add-host=${server.gitDomain}:host-gateway"
-      ];
-    };
+    instances = {
+      default = runner {
+        name = config.networking.hostName;
+        # catthehacker's act images carry what GitHub-hosted runners have (jq,
+        # sudo, build-essential, python, …), so GitHub-style workflows run
+        # without installing their basics first; node:20-bookworm lacked e.g.
+        # jq, which subosito/flutter-action needs.
+        labels = [
+          "ubuntu-latest:docker://${act2404}"
+          "ubuntu-24.04:docker://${act2404}"
+          "ubuntu-22.04:docker://${act2204}"
+        ];
+      };
+    }
+    // lib.mapAttrs (
+      label: _:
+      runner {
+        name = "${config.networking.hostName}-${label}";
+        labels = [ "${label}:docker://${act2404}" ];
+        # The udev symlink below: podman splits --device at ":", which the
+        # by-id path of a USB serial port contains.
+        extraOptions = [ "--device=/dev/forgejo-${label}:/dev/ttyACM0" ];
+      }
+    ) actions.deviceRunners;
   };
+
+  # A name without ":" for each board of deviceRunners.
+  services.udev.extraRules = lib.mkIf actions.enable (
+    lib.concatStrings (
+      lib.mapAttrsToList (label: serial: ''
+        SUBSYSTEM=="tty", ATTRS{serial}=="${serial}", SYMLINK+="forgejo-${label}"
+      '') actions.deviceRunners
+    )
+  );
 
   # Forgejo has no API for job logs, so the admin user reads them on disk
   # (`zstdcat` for finished jobs). The ACL grants exactly that: traverse into
