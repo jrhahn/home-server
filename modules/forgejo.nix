@@ -31,13 +31,13 @@ let
       # /var/lib/gitea-runner/<instance>/.runner and restart the runner.
       url = "${protocol}://${server.gitDomain}";
       tokenFile = actions.tokenFile;
-      # One job at a time. Two (Rust release build + Flutter tests, ~2 GB
-      # each) got OOM-killed together inside forgejo-jobs.slice's 4 GB.
-      # ponytail: a device runner's job still runs beside the default one in
-      # that slice, so a heavy pair can be OOM-killed (rerun). One queue for
-      # both would mean one runner with both label sets, which would pass the
-      # board into every job.
-      settings.runner.capacity = 1;
+      # Two jobs at a time. With 4 GB for forgejo-jobs.slice, two (Rust release
+      # build + Flutter tests, ~2 GB each) got OOM-killed together; the slice
+      # now holds three full 3 GB jobs (16 GB host since 2026-10), so a device
+      # runner's job fits beside the two default ones. One queue for all would
+      # mean one runner with both label sets, which would pass the board into
+      # every job.
+      settings.runner.capacity = 2;
       settings.container.options = lib.concatStringsSep " " (
         [
           # Stability, not security: a job (an Android Gradle build takes 4-6 GB)
@@ -168,13 +168,18 @@ in
     "A+ /srv/forgejo/data/actions_log - - - - u:${server.adminUser}:rX,d:u:${server.adminUser}:rX"
   ];
 
-  # Joint cap for all job containers: 7.5 GB host, ~3 GB for the services.
-  # Over the cap the kernel OOM-kills a job, not Home Assistant or Immich.
-  # No swap, so jobs don't fill zram either.
+  # Joint cap for all job containers: 16 GB host, three 3 GB jobs (two default,
+  # one device runner). The services take ~4-5 GB, the rest of the 16 GB is
+  # page cache that the kernel gives up under build pressure. Over the cap the
+  # kernel OOM-kills a job, not Home Assistant or Immich. No swap, so jobs don't
+  # fill zram either. Low CPU and IO weight: two builds on four cores must not
+  # make the family services sluggish.
   systemd.slices.forgejo-jobs = lib.mkIf actions.enable {
     sliceConfig = {
-      MemoryMax = "4G";
+      MemoryMax = "9G";
       MemorySwapMax = "0";
+      CPUWeight = 20;
+      IOWeight = 20;
     };
   };
 
