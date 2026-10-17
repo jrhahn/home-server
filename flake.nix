@@ -17,7 +17,7 @@
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
       # Instantiated with allowUnfree because some packages pulled from
-      # unstable (e.g. claude-code, codex) have unfree licenses. The NixOS
+      # unstable (e.g. claude-code) have unfree licenses. The NixOS
       # `nixpkgs.config` option does not apply here, since this package set is
       # created outside the NixOS module evaluation.
       pkgsUnstable = import nixpkgs-unstable {

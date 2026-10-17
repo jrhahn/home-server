@@ -174,7 +174,6 @@ in
     gcc
     stdenv.cc.cc.lib
     pkgsUnstable.claude-code
-    pkgsUnstable.codex
     cvTexLive
     dua
     duf
