@@ -184,6 +184,7 @@ in
     fzf
     dig
     file
+    freerouting
     gh
     git
     graphify
@@ -193,6 +194,7 @@ in
     inetutils
     iotop
     jq
+    kicad
     lsof
     ncdu
     nix-output-monitor

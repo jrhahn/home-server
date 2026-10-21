@@ -60,6 +60,9 @@ in
 {
   environment.systemPackages = [
     config.services.forgejo.package
+    # The client side: issues, PRs and releases from the shell, what `gh` is
+    # for GitHub.
+    pkgs.tea
   ];
 
   services.forgejo = {
