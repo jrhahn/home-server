@@ -9,12 +9,17 @@ For a fresh machine setup, follow [INSTALLATION.md](INSTALLATION.md).
 
 This setup uses NixOS services and a small Podman-based Seafile stack for:
 
+- AdGuard Home (LAN and tailnet DNS)
 - Seafile
 - Forgejo
 - Home Assistant
 - Immich
 - Paperless-ngx (opt-in)
 - Terminus / TRMNL e-paper server (opt-in)
+- Mosquitto MQTT broker and an NTP time server for the LAN sensor fleet
+- Sensor fleet extras (opt-in): OTA firmware server and QuestDB time-series archive
+- CUPS print server for a Brother TD-2020 label printer (opt-in)
+- Bulk data on an external disk via bind mounts (opt-in)
 - PostgreSQL, MariaDB, and Redis dependencies
 - nginx reverse proxy
 - database dumps and local Borg backups
@@ -65,8 +70,24 @@ Default local hostnames:
 - Immich: `http://photos.home.arpa`
 - Paperless-ngx (opt-in, `server.paperless.enable`): `http://paperless.home.arpa`
 - Terminus / TRMNL (opt-in, `server.trmnl.enable`): `http://trmnl.home.arpa`
+- Sensor history dashboard (opt-in, `server.smarthomeTimeseries.enable`): `http://iot.home.arpa`
+- Sensor firmware images (opt-in, `server.firmwareServer.enable`): `http://fw.home.arpa/fw/`
 
-Forgejo Actions is opt-in via `server.forgejo.actions.enable`.
+Forgejo Actions is opt-in via `server.forgejo.actions.enable`. Boards on the
+server's USB can each get a runner of their own for hardware-in-the-loop jobs
+via `server.forgejo.actions.deviceRunners` (see the [Forgejo guide](docs/forgejo-getting-started.md)).
+A Claude review bot workflow for Forgejo repos lives in
+[docs/forgejo-claude-review.yml](docs/forgejo-claude-review.yml).
+
+The sensor fleet (rs-smarthome-nodes) uses the always-on Mosquitto broker
+(`modules/mosquitto.nix`) and LAN time server (`modules/time-server.nix`).
+The QuestDB archive service itself comes from the fleet's own NixOS module,
+which the private flake imports; this repo only holds its options, backup and
+DNS wiring.
+
+The label printer is opt-in via `server.printServer.enable` (pulls in Brother's
+unfree driver). Immich originals and Seafile files can move to an external disk
+with `server.storage.externalDisk.enable`; the `/srv` paths stay the same.
 
 GitHub Actions runners for private GitHub repositories are opt-in via
 `server.githubRunner.enable`; they run jailed in a NixOS container without
@@ -81,6 +102,8 @@ Getting started:
 - [GitHub Actions runner](docs/github-runner.md)
 - [Paperless-ngx guide](docs/paperless-getting-started.md)
 - [TRMNL / Terminus guide](docs/trmnl-getting-started.md)
+- [Upgrade runbook](docs/upgrade-runbook.md)
+- [Tailscale DNS cutover](docs/tailscale-dns-cutover.md) (one-time migration for older tailnets)
 
 The Liquid templates driving the panel describe one particular home — its
 rooms and its radar location — so they live with that deployment's private
@@ -126,8 +149,9 @@ xZetsubou/hass-localtuya fork) and is declared in the module, not copied.
 
 This is Home Assistant Core on NixOS, not Home Assistant OS. That means no
 Supervisor add-ons. Your Pi also had Mosquitto, Zigbee2MQTT, Node-RED, and
-Pi-hole directories; those configs are copied into `.ha-import/`, but they are
-not yet enabled as NixOS services.
+Pi-hole directories; those configs are in the `ha-import/` snapshot, but only
+Mosquitto has a NixOS replacement here (`modules/mosquitto.nix`, written fresh,
+not imported). DNS filtering is AdGuard Home instead of Pi-hole.
 
 ## Backups
 
@@ -136,12 +160,17 @@ Local Borg backups are configured in [modules/maintenance.nix](modules/maintenan
 - `home-assistant-local`: stops Home Assistant briefly and backs up
   `/srv/home-assistant` at 03:45.
 - `family-local`: dumps the Seafile MariaDB databases and Immich PostgreSQL
-  database, then backs up the DB dumps, `/var/lib/secrets`, `/srv/forgejo`,
-  `/srv/seafile`,
-  `/srv/seafile-mysql`,
-  `/srv/seafile-redis`, `/srv/immich`, and `/srv/immich-originals` at 04:00.
-  When Terminus is enabled it also dumps its PostgreSQL database and backs up
-  `/srv/trmnl` (minus the live database directory).
+  database (`dump-family-service-databases`, 03:15, kept 14 days), then backs
+  up the DB dumps, `/var/lib/secrets`, `/srv/forgejo`, `/srv/seafile`,
+  `/srv/seafile-mysql`, `/srv/seafile-redis`, `/srv/immich`, and
+  `/srv/immich-originals` at 04:00. Opt-in services ride along when enabled:
+  - Paperless: PostgreSQL dump plus `/srv/paperless` (minus logs).
+  - Terminus: PostgreSQL dump plus `/srv/trmnl` (minus the live database
+    directory).
+  - Sensor archive: the QuestDB data directory, copied under a checkpoint
+    instead of a dump.
+  - ai-trainer (`server.backups.aiTrainer`): its encrypted artefacts, pulled
+    from its own host so that host holds no Storage Box credentials.
   Forgejo also writes its own dump under `/srv/forgejo/dump` at 03:30.
 
 Initialize the local repo once:
@@ -157,7 +186,9 @@ with family photos.
 Remote Borg backups to a Hetzner Storage Box can be enabled with the
 `server.backups.hetzner` settings in your private `local.nix`. See
 [Hetzner Storage Box backups](docs/hetzner-storage-box-backups.md) for the
-setup steps.
+setup steps. The remote jobs run at 04:15 (Home Assistant) and 04:30 (family).
+`server.backups.notify` emails a summary after each remote job, or only on
+failure with `onSuccess = false`.
 
 This server is intended for local network and Tailscale access only. Public
 HTTPS is disabled through `server.enablePublicTls = false`; do not expose it
