@@ -163,7 +163,9 @@ Local Borg backups are configured in [modules/maintenance.nix](modules/maintenan
   database (`dump-family-service-databases`, 03:15, kept 14 days), then backs
   up the DB dumps, `/var/lib/secrets`, `/srv/forgejo`, `/srv/seafile`,
   `/srv/seafile-mysql`, `/srv/seafile-redis`, `/srv/immich`, and
-  `/srv/immich-originals` at 04:00. Opt-in services ride along when enabled:
+  `/srv/immich-originals` at 04:00, minus files written around the clock
+  (Seafile's Redis AOF and logs, Forgejo's job queue). Opt-in services ride
+  along when enabled:
   - Paperless: PostgreSQL dump plus `/srv/paperless` (minus logs).
   - Terminus: PostgreSQL dump plus `/srv/trmnl` (minus the live database
     directory).

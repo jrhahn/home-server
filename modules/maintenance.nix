@@ -41,6 +41,11 @@ let
     # is only Redis' job queue/cache; the authoritative state is in the
     # MariaDB dump under /srv/backups/database-dumps.
     "pp:/srv/seafile-redis/appendonlydir"
+    # Same failure, different writers: Seafile's monitor log and Forgejo's
+    # LevelDB job queue are appended to at any hour. The queue holds only
+    # pending background work; repositories and the database dump are kept.
+    "pp:/srv/seafile/seafile/logs"
+    "pp:/srv/forgejo/data/queues"
   ]
   ++ lib.optionals server.paperless.enable [ "pp:/srv/paperless/log" ]
   # Terminus' PostgreSQL writes here continuously; the consistent copy is the
@@ -395,7 +400,8 @@ lib.mkMerge [
             errlines=""
             if [ "$result" != "success" ]; then
               errlines="$(${pkgs.systemd}/bin/journalctl -o cat -u "$unit" -n 80 2>/dev/null \
-                | ${pkgs.gnugrep}/bin/grep -aiE 'error|fail|denied|exception|cannot|could not|permission' \
+                | ${pkgs.gnugrep}/bin/grep -aiE 'error|fail|denied|exception|cannot|could not|permission|changed while|no such file|errno|warning|terminating' \
+                | ${pkgs.gnugrep}/bin/grep -av '^Archive name:' \
                 | ${pkgs.coreutils}/bin/tail -n 15 || true)"
             fi
 
