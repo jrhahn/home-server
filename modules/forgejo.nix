@@ -63,6 +63,8 @@ in
     # The client side: issues, PRs and releases from the shell, what `gh` is
     # for GitHub.
     pkgs.tea
+    # fj (forgejo-cli): the same from Forgejo's own project, closer to `gh`.
+    pkgs.forgejo-cli
   ];
 
   services.forgejo = {
