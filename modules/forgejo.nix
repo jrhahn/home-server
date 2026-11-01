@@ -3,6 +3,7 @@
   lib,
   pkgs,
   server,
+  utils,
   ...
 }:
 
@@ -153,6 +154,23 @@ in
       }
     ) actions.deviceRunners;
   };
+
+  # After a reboot on 2026-11-01 the runner started before Forgejo answered:
+  # three 502s in 8 s. With the module's defaults (restart after 100 ms, the
+  # start limit of 5 in 10 s) a slower Forgejo start would leave it failed for
+  # good: no deploys, no weekly workflows, and nothing says so. Start after
+  # Forgejo, wait 15 s between tries, and never give up (ai-trainer-ops#338).
+  systemd.services = lib.mkIf actions.enable (
+    lib.mapAttrs' (
+      name: _:
+      lib.nameValuePair "gitea-runner-${utils.escapeSystemdPath name}" {
+        after = [ "forgejo.service" ];
+        wants = [ "forgejo.service" ];
+        startLimitIntervalSec = 0;
+        serviceConfig.RestartSec = lib.mkForce "15s";
+      }
+    ) config.services.gitea-actions-runner.instances
+  );
 
   # A name without ":" for each board of deviceRunners.
   services.udev.extraRules = lib.mkIf actions.enable (
