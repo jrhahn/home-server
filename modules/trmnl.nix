@@ -14,6 +14,9 @@ let
   # ports are only ever used inside the Podman network.
   port = 2300;
 
+  # Where the host can reach the published web port.
+  webAddress = if cfg.listenAddress == "0.0.0.0" then "127.0.0.1" else cfg.listenAddress;
+
   # Web and worker are the same image with the same wiring; only the command
   # and the one-shot setup step differ.
   sharedEnvironment = {
@@ -121,8 +124,8 @@ lib.mkIf cfg.enable {
       environmentFiles = [ cfg.secretsFile ];
       environment = sharedEnvironment // {
         # Compiles assets and applies pending database migrations before Puma
-        # comes up. Upstream sets this on the web service only, so the worker
-        # can never race the migration.
+        # comes up. Upstream sets this on the web service only; the worker
+        # waits for Puma below so it never boots against the old schema.
         APP_SETUP = "true";
       };
       # Unlike every other service here, the client is a battery-powered e-paper
@@ -183,6 +186,12 @@ lib.mkIf cfg.enable {
   }
   // startUntilDependenciesAreReady;
 
+  # `after` only waits for the web container to *start*, not for its migrations
+  # to finish, and ROM reads the table layout once when the worker boots. On
+  # 2026-11-01 a pulled image dropped device.width; the worker came up seven
+  # seconds before the web container migrated, kept selecting the dropped
+  # column, and every screen render failed until it was restarted. Puma only
+  # listens once APP_SETUP is done, so wait for it.
   systemd.services.podman-trmnl-worker = {
     after = [
       "podman-network-trmnl.service"
@@ -190,6 +199,11 @@ lib.mkIf cfg.enable {
     ];
     requires = [ "podman-network-trmnl.service" ];
     unitConfig.RequiresMountsFor = [ "/srv/trmnl/uploads" ];
+    preStart = ''
+      until ${pkgs.curl}/bin/curl -so /dev/null http://${webAddress}:${toString port}/; do
+        sleep 2
+      done
+    '';
   }
   // startUntilDependenciesAreReady;
 
